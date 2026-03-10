@@ -17,7 +17,7 @@ GOV_INDIA_API_KEY = "YOUR_API_KEY"
 GOV_INDIA_RESOURCE_ID = "PROVIDE_RESOURCE_ID"
 
 # Database
-DATABASE_PATH = os.path.join(os.path.dirname(__file__), "database", "auralis.db")
+DATABASE_PATH = os.path.join(os.path.dirname(__file__), "database", "teamx.db")
 
 # Application settings
 HOST = "127.0.0.1"
