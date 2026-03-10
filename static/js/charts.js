@@ -103,5 +103,5 @@ class TeamXForecast {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    window.TeamXForecast = new TeamXForecast();
+    window.teamxForecast = new TeamXForecast();
 });

@@ -1,4 +1,4 @@
-# 🌿 EcoStride – Smart Air Quality Management System
+# 🌿 EcoStride – Real-Time Air Quality Monitoring, Prediction & Clean Route Navigation
 
 ![Python](https://img.shields.io/badge/Python-3.8%2B-blue?style=flat-square&logo=python)
 ![Flask](https://img.shields.io/badge/Flask-Backend-lightgrey?style=flat-square&logo=flask)

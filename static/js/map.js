@@ -242,5 +242,5 @@ class TeamXMap {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    window.TeamXMap = new TeamXMap();
+    window.teamxMap = new TeamXMap();
 });

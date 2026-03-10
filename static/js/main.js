@@ -152,5 +152,5 @@ class TeamXDashboard {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    window.TeamXDashboard = new TeamXDashboard();
+    window.teamxDashboard = new TeamXDashboard();
 });

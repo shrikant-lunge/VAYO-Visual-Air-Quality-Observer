@@ -56,7 +56,7 @@ class RoutePlanner:
             res  = requests.get(self.nominatim,
                                 params={"q": f"{name}, Amravati, Maharashtra, India",
                                         "format": "json", "limit": 1},
-                                headers={"User-Agent": "AuralisApp/1.0"},
+                                headers={"User-Agent": "TeamXApp/1.0"},
                                 timeout=8)
             data = res.json()
             if data:
