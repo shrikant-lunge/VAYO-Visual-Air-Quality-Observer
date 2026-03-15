@@ -31,3 +31,8 @@ FORECAST_RETRAIN_DAYS = 7
 # Caching (to save API calls)
 CACHE_ENABLED = True
 CACHE_DURATION = 900  # 15 minutes in seconds
+
+# SMTP & SMS configurations for Alert Service
+SMTP_EMAIL = ""
+SMTP_APP_PASSWORD = ""
+FAST2SMS_API_KEY = ""

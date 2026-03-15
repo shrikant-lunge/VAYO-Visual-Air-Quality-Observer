@@ -6,8 +6,8 @@ import requests
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-# Amravati locations: 40+ colonies, colleges, schools, and gardens
-AMRAVATI_COLONIES = [
+# Default locations (Delhi fallback)
+DEFAULT_COLONIES = [
     # Educational Institutions (Colleges & Universities)
     {"name": "Govt College of Engineering (GCOEA)", "lat": 20.9586, "lon": 77.7580},
     {"name": "PRMIT&R, Badnera",                "lat": 20.8548, "lon": 77.7523},
@@ -77,13 +77,12 @@ except ImportError:
         GOV_INDIA_API_KEY, GOV_INDIA_RESOURCE_ID
     )
 
-# Amravati GPS center — used for coordinate-based AQI lookups
-# User provided precise Amravati coordinates
-AMRAVATI_LAT = 20.9343
-AMRAVATI_LON = 77.7489
+# Default GPS center 
+DEFAULT_LAT = 28.6139  # Delhi
+DEFAULT_LON = 77.2090
 
-# Amravati known industrial/traffic hotspots
-AMRAVATI_HOTSPOTS = [
+# Known industrial/traffic hotspots (Fallback)
+DEFAULT_HOTSPOTS = [
     {"name": "MIDC Industrial Area",        "lat": 20.9100, "lon": 77.7950, "base_type": "Industrial emissions"},
     {"name": "Badnera Railway Junction",    "lat": 20.9200, "lon": 77.8300, "base_type": "Vehicle traffic concentrations"},
     {"name": "Cotton Market (Kapas Bazar)", "lat": 20.9380, "lon": 77.7600, "base_type": "Crop burning areas"},
@@ -122,8 +121,8 @@ class AQIForecaster:
     # PRIMARY: OpenWeatherMap Air Pollution API
     # Uses exact lat/lon for Amravati — most reliable
     # ──────────────────────────────────────────────
-    def fetch_owm_by_coords(self, lat=AMRAVATI_LAT, lon=AMRAVATI_LON):
-        """Fetch live AQI from OWM using GPS coordinates of Amravati."""
+    def fetch_owm_by_coords(self, lat=DEFAULT_LAT, lon=DEFAULT_LON):
+        """Fetch live AQI from OWM using GPS coordinates."""
         try:
             url = "http://api.openweathermap.org/data/2.5/air_pollution"
             res = requests.get(url, params={"lat": lat, "lon": lon, "appid": OPENWEATHER_API_KEY}, timeout=8)
@@ -161,7 +160,7 @@ class AQIForecaster:
     # ──────────────────────────────────────────────
     # ABSOLUTE PRIMARY: Govt of India (data.gov.in)
     # ──────────────────────────────────────────────
-    def fetch_gov_india_aqi(self, city="Amravati"):
+    def fetch_gov_india_aqi(self, city="Delhi"):
         """Fetch live AQI from data.gov.in API."""
         url = f"https://api.data.gov.in/resource/{GOV_INDIA_RESOURCE_ID}"
         params = {
@@ -189,8 +188,8 @@ class AQIForecaster:
                         temp_stations[s_name] = {
                             "station": s_name,
                             "city": str(rec.get("city") or ""),
-                            "lat": float(rec.get("latitude") or AMRAVATI_LAT),
-                            "lon": float(rec.get("longitude") or AMRAVATI_LON),
+                            "lat": float(rec.get("latitude") or DEFAULT_LAT),
+                            "lon": float(rec.get("longitude") or DEFAULT_LON),
                             "last_update": str(rec.get("last_update") or ""),
                             "pm25": 0.0, "pm10": 0.0, "no2": 0.0, "o3": 0.0, "so2": 0.0, "co": 0.0
                         }
@@ -235,7 +234,7 @@ class AQIForecaster:
     # ──────────────────────────────────────────────
     # SECONDARY: AQICN — try multiple station names
     # ──────────────────────────────────────────────
-    def fetch_aqicn_by_id(self, station_id, lat=AMRAVATI_LAT, lon=AMRAVATI_LON):
+    def fetch_aqicn_by_id(self, station_id, lat=DEFAULT_LAT, lon=DEFAULT_LON):
         """Fetch AQI for a specific AQICN station ID."""
         url = f"https://api.waqi.info/feed/{station_id}/"
         try:
@@ -267,19 +266,19 @@ class AQIForecaster:
             print(f"AQICN error for {station_id}: {e}")
         return None
 
-    def get_current(self, location="amravati", lat=AMRAVATI_LAT, lon=AMRAVATI_LON):
+    def get_current(self, location="Delhi", lat=DEFAULT_LAT, lon=DEFAULT_LON):
         """Get live AQI using the absolute primary source: Govt India Data."""
         try:
             lat, lon = float(lat), float(lon)
         except:
-            lat, lon = AMRAVATI_LAT, AMRAVATI_LON
+            lat, lon = DEFAULT_LAT, DEFAULT_LON
 
         cache_key = f"current_{location}_{lat}_{lon}"
         if self._is_cache_valid(cache_key):
             return self._cache[cache_key]
 
         # 1. PRIMARY: Fetch from Govt of India Data Portal
-        gov_stations = self.fetch_gov_india_aqi("Amravati")
+        gov_stations = self.fetch_gov_india_aqi(location)
         
         # 2. Fetch fixed physical stations as secondary fallback
         pi_stations = []
@@ -343,7 +342,7 @@ class AQIForecaster:
         if aqi <= 300: return "Very Unhealthy"
         return "Hazardous"
 
-    def predict_72h(self, location="amravati"):
+    def predict_72h(self, location="Delhi"):
         """72-hr forecast anchored on live AQI with traffic & night patterns."""
         cache_key = f"predict_{location}"
         if self._is_cache_valid(cache_key, ttl=1800):
@@ -389,14 +388,14 @@ class AQIForecaster:
         self._cache_time[cache_key] = datetime.datetime.now()
         return result
 
-    def get_source_hotspots(self) -> list:
-        """Dynamic hotspots scaled to live Amravati AQI."""
-        curr   = self.get_current("amravati")
+    def get_source_hotspots(self, city="Delhi", lat=DEFAULT_LAT, lon=DEFAULT_LON) -> list:
+        """Dynamic hotspots scaled to live AQI."""
+        curr   = self.get_current(city, lat, lon)
         base   = float(curr.get("aqi", 72))
         scale  = base / 100.0
 
         sources = []
-        for spot in AMRAVATI_HOTSPOTS:
+        for spot in DEFAULT_HOTSPOTS:
             conc = min(0.99, float(f"{random.uniform(0.45, 0.88) * scale:.2f}"))
             conf = float(f"{random.uniform(0.72, 0.96):.2f}")
             sources.append({
@@ -479,62 +478,83 @@ class AQIForecaster:
         "Gandhi Park":           {"factor": 0.50, "pm_extra": -18, "no2_extra": -10},
     }
 
-    def get_colony_pins(self):
+    def get_locations_for_city(self, city_name, lat, lon, radius_km=12):
+        cache_key = f"locations_{lat}_{lon}_{radius_km}"
+        if self._is_cache_valid(cache_key, ttl=86400):
+            return self._cache[cache_key]
+
+        overpass_url = "https://overpass-api.de/api/interpreter"
+        query = f"""
+        [out:json][timeout:25];
+        (
+          node["place"~"suburb|neighbourhood|quarter"](around:{radius_km*1000},{lat},{lon});
+          node["amenity"~"school|college|university|hospital"](around:{radius_km*1000},{lat},{lon});
+          node["leisure"~"park|garden"](around:{radius_km*1000},{lat},{lon});
+          node["highway"~"traffic_signals"](around:{radius_km*1000},{lat},{lon});
+        );
+        out body;
         """
-        Returns live AQI pins for all Amravati colonies.
-        Uses a single live OWM fetch for the base, then applies land-use
-        multipliers per colony to produce realistic per-colony variation.
-        Cache TTL = 600 s (10 min).
-        """
-        cache_key = "colony_pins"
+        locations = []
+        try:
+            res = requests.post(overpass_url, data={'data': query}, timeout=10)
+            if res.status_code == 200:
+                data = res.json()
+                for el in data.get('elements', []):
+                    tags = el.get('tags', {})
+                    name = tags.get('name')
+                    if name and len(name) > 2:
+                        category = "Unknown"
+                        factor = 1.0; pm_extra = 0; no2_extra = 0
+                        if 'leisure' in tags:
+                            category = "Park/Garden"
+                            factor = 0.6; pm_extra = -15; no2_extra = -10
+                        elif 'amenity' in tags:
+                            category = "Institutional"
+                            factor = 0.95; pm_extra = -2; no2_extra = -2
+                        elif 'highway' in tags:
+                            category = "Traffic Node"
+                            factor = 1.25; pm_extra = +15; no2_extra = +10
+                        else:
+                            category = "Neighborhood"
+                            factor = 1.0; pm_extra = 0; no2_extra = 0
+
+                        locations.append({
+                            "name": name,
+                            "lat": el.get('lat'),
+                            "lon": el.get('lon'),
+                            "category": category,
+                            "factor": factor, "pm_extra": pm_extra, "no2_extra": no2_extra
+                        })
+        except Exception as e:
+            print(f"Overpass locations error: {e}")
+            locations = DEFAULT_COLONIES # Fallback
+
+        self._cache[cache_key] = locations
+        self._cache_time[cache_key] = datetime.datetime.now()
+        return locations
+
+    def get_colony_pins(self, lat=DEFAULT_LAT, lon=DEFAULT_LON, city_name="Delhi"):
+        cache_key = f"colony_pins_{lat}_{lon}"
         if self._is_cache_valid(cache_key, ttl=600):
             return self._cache[cache_key]
 
-        # ─────────────────────────────────────────────────────────────────────────
-        # Simplified and optimized localized fetching
-        # ─────────────────────────────────────────────────────────────────────────
-        pins = []
-        # 1. Fetch from Absolute Primaries (Gov + fixed stations)
-        gov_list = self.fetch_gov_india_aqi("Amravati") or []
-        
-        # secondary stations (AQICN)
-        pi_list = []
-        with ThreadPoolExecutor(max_workers=3) as executor:
-            fut = {executor.submit(self.fetch_aqicn_by_id, s["id"], s["lat"], s["lon"]): s for s in KNOWN_STATIONS}
-            for f in as_completed(fut):
-                r = f.result()
-                if r: pi_list.append(r)
-        
-        all_phy = gov_list + pi_list
-        owm_anchor = self.fetch_owm_by_coords(AMRAVATI_LAT, AMRAVATI_LON)
-        rng_seed = int(datetime.datetime.now().strftime("%Y%m%d%H"))
+        # Fetch localities dynamically
+        locations = self.get_locations_for_city(city_name, lat, lon)
 
         pins = []
-        for idx, colony in enumerate(AMRAVATI_COLONIES):
+        ovm_anchor = self.fetch_owm_by_coords(lat, lon)
+        rng_seed = int(datetime.datetime.now().strftime("%Y%m%d%H"))
+
+        for idx, colony in enumerate(locations):
             name = str(colony["name"])
-            c_lat = float(colony["lat"])
-            c_lon = float(colony["lon"])
+            c_lat = float(colony.get("lat", DEFAULT_LAT))
+            c_lon = float(colony.get("lon", DEFAULT_LON))
             
-            # Find nearest among gov/physical
-            best_s = None
-            m_dist = float('inf')
-            for s in all_phy:
-                d = haversine(c_lat, c_lon, float(s["lat"]), float(s["lon"]))
-                if d < m_dist:
-                    m_dist = d
-                    best_s = s
-            
-            # Use local sensor if within 10km, else use city-wide OWM anchor
-            if best_s and m_dist < 10.0:
-                base_data = best_s
-                raw_d = float(m_dist)
-                source_tag = f"{str(best_s.get('source', 'gov'))} ({round(raw_d, 1)}km)"
-            else:
-                base_data = owm_anchor or {
-                    "aqi": 66, "pm2_5": 18.4, "pm10": 22.2, "no2": 12.3, "o3": 10.1,
-                    "so2": 4.8, "co": 0.4, "source": "verified_local_anchor"
-                }
-                source_tag = "owm_city_anchor"
+            base_data = ovm_anchor or {
+                "aqi": 66, "pm2_5": 18.4, "pm10": 22.2, "no2": 12.3, "o3": 10.1,
+                "so2": 4.8, "co": 0.4, "source": "verified_local_anchor"
+            }
+            source_tag = "owm_anchor"
 
             base_aqi  = float(base_data.get("aqi",   72))
             base_pm25 = float(base_data.get("pm2_5", 28))
@@ -542,16 +562,17 @@ class AQIForecaster:
             base_no2  = float(base_data.get("no2",   18))
             base_o3   = float(base_data.get("o3",    12))
 
-            cfg  = self.COLONY_FACTORS.get(name, {"factor": 1.0, "pm_extra": 0, "no2_extra": 0})
+            cfg_factor = colony.get("factor", 1.0)
+            cfg_pm_extra = colony.get("pm_extra", 0)
+            cfg_no2_extra = colony.get("no2_extra", 0)
 
-            # Apply zone factor + micro-variation (±4 AQI)
             rng     = random.Random(rng_seed + idx)
             micro   = rng.uniform(-4, 4)
-            aqi_val = max(10, round(base_aqi * cfg["factor"] + micro))
+            aqi_val = max(10, round(base_aqi * cfg_factor + micro))
 
-            pm25_val = max(0.0, float(f"{base_pm25 * cfg['factor'] + cfg['pm_extra'] + rng.uniform(-2, 2):.1f}"))
-            pm10_val = max(0.0, float(f"{base_pm10 * cfg['factor'] + cfg['pm_extra'] + rng.uniform(-3, 3):.1f}"))
-            no2_val  = max(0.0, float(f"{base_no2  * cfg['factor'] + cfg['no2_extra'] + rng.uniform(-1, 1):.1f}"))
+            pm25_val = max(0.0, float(f"{base_pm25 * cfg_factor + cfg_pm_extra + rng.uniform(-2, 2):.1f}"))
+            pm10_val = max(0.0, float(f"{base_pm10 * cfg_factor + cfg_pm_extra + rng.uniform(-3, 3):.1f}"))
+            no2_val  = max(0.0, float(f"{base_no2  * cfg_factor + cfg_no2_extra + rng.uniform(-1, 1):.1f}"))
 
             pins.append({
                 "id":       idx,
@@ -562,9 +583,10 @@ class AQIForecaster:
                 "pm2_5":    pm25_val,
                 "pm10":     pm10_val,
                 "no2":      no2_val,
-                "o3":       float(f"{base_o3 * max(0.7, cfg['factor'] - 0.1):.1f}"),
+                "o3":       float(f"{base_o3 * max(0.7, cfg_factor - 0.1):.1f}"),
                 "source":   f"{source_tag}+zone_model",
-                "category": self._get_aqi_category(int(aqi_val)),
+                "category": colony.get("category", "Neighborhood"),
+                "source_type": colony.get("category", "Neighborhood"),
             })
 
         pins.sort(key=lambda x: x["aqi"])

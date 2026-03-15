@@ -14,13 +14,50 @@ const ROUTE_STYLE = {
     industrial: { color: "#FF3333", weight: 5, dashArray: "3,6", opacity: 0.80, zIndex: 300 },
 };
 
+// Google Maps style markers
+const PIN_ICONS = {
+    start: L.divIcon({
+        className: 'custom-pin',
+        html: `<div style="background:#10b981; width:24px; height:24px; border-radius:50% 50% 50% 0; transform:rotate(-45deg); display:flex; align-items:center; justify-content:center; border:2px solid #fff; box-shadow:0 2px 5px rgba(0,0,0,0.3);">
+                <div style="width:8px; height:8px; background:#fff; border-radius:50%; transform:rotate(45deg);"></div>
+               </div>`,
+        iconSize: [24, 24],
+        iconAnchor: [12, 24],
+        popupAnchor: [0, -24]
+    }),
+    end: L.divIcon({
+        className: 'custom-pin',
+        html: `<div style="background:#ef4444; width:24px; height:24px; border-radius:50% 50% 50% 0; transform:rotate(-45deg); display:flex; align-items:center; justify-content:center; border:2px solid #fff; box-shadow:0 2px 5px rgba(0,0,0,0.3);">
+                <div style="width:8px; height:8px; background:#fff; border-radius:50%; transform:rotate(45deg);"></div>
+               </div>`,
+        iconSize: [24, 24],
+        iconAnchor: [12, 24],
+        popupAnchor: [0, -24]
+    }),
+    user: L.divIcon({
+        className: 'user-pin',
+        html: `<div style="background:#3b82f6; width:16px; height:16px; border-radius:50%; border:3px solid #fff; box-shadow:0 0 10px rgba(59,130,246,0.8); position:relative;">
+                <div style="position:absolute; top:-4px; left:-4px; right:-4px; bottom:-4px; border:1px solid #3b82f6; border-radius:50%; animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
+               </div>`,
+        iconSize: [16, 16],
+        iconAnchor: [8, 8]
+    })
+};
+
+
 class TeamXMap {
     constructor() {
         this.map = null;
         this.routeLayers = [];   // [{index, layer}]
         this.markerLayers = [];
+        this.userMarker = null;
+        this.watchId = null;
+        this.userCoords = null;
+        this.selectedRouteIndex = -1;
         this.init();
     }
+
+
 
     init() {
         if (!document.getElementById('map')) return;
@@ -31,7 +68,151 @@ class TeamXMap {
 
         // Load colony AQI pins as background layer
         this.loadColonyPins();
+
+        // Start GPS tracking
+        this.initGeolocation();
     }
+
+    initGeolocation() {
+        if (!navigator.geolocation) {
+            console.error("Geolocation is not supported by this browser.");
+            return;
+        }
+
+        this.watchId = navigator.geolocation.watchPosition(
+            (pos) => this.onLocationUpdate(pos),
+            (err) => this.onLocationError(err),
+            { enableHighAccuracy: true, maximumAge: 10000, timeout: 5000 }
+        );
+    }
+
+    onLocationUpdate(position) {
+        const { latitude, longitude, accuracy } = position.coords;
+        this.userCoords = [latitude, longitude];
+
+        if (!this.userMarker) {
+            this.userMarker = L.marker(this.userCoords, { icon: PIN_ICONS.user }).addTo(this.map);
+            this.userMarker.bindPopup("<b>You are here</b>").openPopup();
+            // Initially center map to user
+            this.map.panTo(this.userCoords);
+        } else {
+            this.userMarker.setLatLng(this.userCoords);
+        }
+
+        // Keep marker on top
+        this.userMarker.setZIndexOffset(1000);
+    }
+
+    onLocationError(error) {
+        console.error("Geolocation error:", error);
+        let msg = "Please enable GPS for accurate navigation.";
+        if (error.code === 1) msg = "Location access denied. Please allow location permissions in your browser settings.";
+        else if (error.code === 3) msg = "Location request timed out. Retrying...";
+
+        this.showToast(msg, error.code === 1 ? 'error' : 'warning');
+    }
+
+    showToast(message, type = 'info') {
+        const toastId = 'map-toast';
+        let toast = document.getElementById(toastId);
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.id = toastId;
+            toast.style.cssText = `
+                position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+                background: rgba(0,0,0,0.85); color: #fff; padding: 12px 24px;
+                border-radius: 12px; z-index: 9999; font-size: 14px; 
+                border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(8px);
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); pointer-events: none; 
+                text-align: center; opacity: 0;
+            `;
+            document.body.appendChild(toast);
+        }
+        
+        // Handle popup style for "Turn on GPS"
+        if (message.includes("enable GPS") || message.includes("denied")) {
+            toast.style.background = "rgba(239, 68, 68, 0.95)";
+            toast.style.borderColor = "#fff";
+            toast.innerHTML = `<div style="display:flex; align-items:center; gap:10px;">
+                <i data-lucide="map-pin-off"></i>
+                <span>${message}</span>
+            </div>`;
+        } else {
+            toast.style.background = "rgba(0,0,0,0.85)";
+            toast.style.borderColor = "rgba(255,255,255,0.1)";
+            toast.textContent = message;
+        }
+
+        toast.style.opacity = '1';
+        toast.style.transform = 'translateX(-50%) translateY(-10px)';
+        
+        if (!message.includes("denied") && !message.includes("enable GPS")) {
+            setTimeout(() => { 
+                toast.style.opacity = '0'; 
+                toast.style.transform = 'translateX(-50%) translateY(0)';
+            }, 4000);
+        }
+    }
+
+    useCurrentLocation() {
+        if (this.userCoords) {
+            const startInput = document.getElementById('start-node');
+            if (startInput) {
+                startInput.value = "My Location";
+                startInput.dataset.lat = this.userCoords[0];
+                startInput.dataset.lon = this.userCoords[1];
+                this.showToast("Using current location as departure point.");
+                this.updateDirectionsButtonVisibility();
+            }
+        } else {
+            this.showToast("GPS location not available yet. Please wait.", 'warning');
+        }
+    }
+
+    updateDirectionsButtonVisibility() {
+        const start = document.getElementById('start-node').value.trim();
+        const container = document.getElementById('directions-btn-container');
+        if (container) {
+            container.style.display = (start === "My Location") ? 'block' : 'none';
+        }
+    }
+
+    selectRoute(index) {
+        this.selectedRouteIndex = index;
+        
+        // Update map layers
+        this.routeLayers.forEach(rl => {
+            const isSelected = rl.index === index;
+            rl.layer.setStyle({
+                opacity: isSelected ? 1 : 0.15,
+                weight: isSelected ? 8 : 4
+            });
+            if (isSelected) rl.layer.bringToFront();
+        });
+
+        // Update cards
+        const cards = document.querySelectorAll('.route-card');
+        cards.forEach((card, idx) => {
+            if (idx === index) {
+                card.style.background = 'rgba(255, 255, 255, 0.12)';
+                card.style.borderColor = 'var(--primary)';
+            } else {
+                card.style.background = 'rgba(255, 255, 255, 0.03)';
+                card.style.borderColor = 'var(--card-border)';
+            }
+        });
+    }
+
+    startNavigation() {
+        if (this.selectedRouteIndex === -1) {
+            this.showToast("Please select a route first.", 'warning');
+            return;
+        }
+        this.showToast("Navigation started! Tracking your movement...", 'info');
+        // Future: could implement turn-by-turn or active path following
+    }
+
+
 
     // ─────────────────────────────────────
     // Colony AQI pins (shared helper)
@@ -89,21 +270,32 @@ class TeamXMap {
     }
 
     async calculateRoute() {
-        const start = document.getElementById('start-node').value.trim();
+        const startNode = document.getElementById('start-node');
+        const start = startNode.value.trim();
         const end = document.getElementById('end-node').value.trim();
         const btn = document.getElementById('find-btn');
         const spinner = document.getElementById('route-spinner');
+        
         if (btn) { btn.disabled = true; }
         if (spinner) { spinner.style.display = 'inline'; }
 
         this.clearAll();
 
         try {
+            const payload = { end_name: end };
+            if (start === "My Location" && startNode.dataset.lat) {
+                payload.start_lat = parseFloat(startNode.dataset.lat);
+                payload.start_lon = parseFloat(startNode.dataset.lon);
+            } else {
+                payload.start_name = start;
+            }
+
             const res = await fetch('/api/route/calculate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ start_name: start, end_name: end })
+                body: JSON.stringify(payload)
             });
+
             const data = await res.json();
 
             if (data.status === 'success' && data.routes.length > 0) {
@@ -159,7 +351,10 @@ class TeamXMap {
                 }).bindTooltip(
                     `<b>${route.label}</b><br>Via: ${route.via || 'Direct'}<br>AQI exposure: <b>${route.aqi_exposure_score}</b> (${this.aqiLabel(route.aqi_exposure_score)})`,
                     { sticky: true, direction: 'auto', className: 'route-tooltip' }
-                ).addTo(this.map);
+                ).on('click', () => {
+                    this.selectRoute(idx);
+                }).addTo(this.map);
+
 
                 this.routeLayers.push({ index: idx, layer });
                 if (layer.getBounds && layer.getBounds().isValid()) {
@@ -173,29 +368,24 @@ class TeamXMap {
 
                 const popupOpts = { maxWidth: 180 };
 
-                const mkS = L.circleMarker(
+                const mkS = L.marker(
                     [route.start_location.coords[1], route.start_location.coords[0]],
-                    {
-                        radius: 11, color: '#fff', weight: 2.5,
-                        fillColor: this.aqiColor(route.start_location.aqi), fillOpacity: 0.95
-                    }
+                    { icon: PIN_ICONS.start }
                 ).bindPopup(
                     `<b>🏁 START</b><br>${route.start_location.name}<br>Local AQI: <b style="color:${this.aqiColor(route.start_location.aqi)}">${route.start_location.aqi}</b>`,
                     popupOpts
                 ).addTo(this.map);
 
-                const mkE = L.circleMarker(
+                const mkE = L.marker(
                     [route.end_location.coords[1], route.end_location.coords[0]],
-                    {
-                        radius: 11, color: '#fff', weight: 2.5,
-                        fillColor: this.aqiColor(route.end_location.aqi), fillOpacity: 0.95
-                    }
+                    { icon: PIN_ICONS.end }
                 ).bindPopup(
                     `<b>🏁 END</b><br>${route.end_location.name}<br>Local AQI: <b style="color:${this.aqiColor(route.end_location.aqi)}">${route.end_location.aqi}</b>`,
                     popupOpts
                 ).addTo(this.map);
 
                 this.markerLayers.push(mkS, mkE);
+
                 bounds.extend([route.start_location.coords[1], route.start_location.coords[0]]);
                 bounds.extend([route.end_location.coords[1], route.end_location.coords[0]]);
             }
@@ -222,14 +412,15 @@ class TeamXMap {
                     <div style="font-size:0.7em; color:${aqiClr};">${this.aqiLabel(route.aqi_exposure_score)}</div>
                 </div>`;
 
-            // Click → zoom to this specific route
-            const capturedLayer = this.routeLayers[this.routeLayers.length - 1]?.layer;
+            // Click → select this route
             card.addEventListener('click', () => {
+                this.selectRoute(idx);
                 if (capturedLayer && capturedLayer.getBounds) {
                     const b = capturedLayer.getBounds();
                     if (b.isValid()) this.map.fitBounds(b, { padding: [50, 50] });
                 }
             });
+
 
             document.getElementById('route-list').appendChild(card);
         });

@@ -85,7 +85,45 @@
             margin-bottom: 0.5rem;
             letter-spacing: 0.05em;
         }
+
+        .input-group {
+            position: relative;
+            margin-bottom: 1.25rem;
+        }
+
+        .input-icon-btn {
+            position: absolute;
+            right: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--primary);
+            cursor: pointer;
+            padding: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+            z-index: 10;
+        }
+
+        .input-icon-btn:hover {
+            color: #fff;
+            transform: translateY(-50%) scale(1.1);
+        }
+
+        .directions-btn-container {
+            display: none;
+            margin-top: 1rem;
+        }
+
+        @keyframes ping {
+            0% { transform: scale(1); opacity: 1; }
+            70%, 100% { transform: scale(3); opacity: 0; }
+        }
     </style>
+
 </head>
 
 <body>
@@ -122,15 +160,29 @@
                 <div class="card">
                     <h2 style="font-size: 1.25rem; margin-bottom: 1.5rem;">Navigation Settings</h2>
                     <label>Departure Point</label>
-                    <input type="text" id="start-node" value="Rajapeth" placeholder="Start Colony (Amravati)">
+                    <div class="input-group">
+                        <input type="text" id="start-node" value="Rajapeth" placeholder="Start Colony (Amravati)" oninput="window.teamxMap.updateDirectionsButtonVisibility()">
+                        <button class="input-icon-btn" title="Use Current Location" onclick="window.teamxMap.useCurrentLocation()">
+                            <i data-lucide="map-pin"></i>
+                        </button>
+                    </div>
+
                     <label>Destination</label>
-                    <input type="text" id="end-node" value="Camp" placeholder="End Colony (Amravati)">
+                    <div class="input-group">
+                        <input type="text" id="end-node" value="Camp" placeholder="End Colony (Amravati)">
+                    </div>
 
                     <button id="find-btn" class="btn" style="width: 100%;" onclick="window.teamxMap.calculateRoute()">
                         <i data-lucide="search"></i> Calculate Safest Path
                         <span id="route-spinner" style="display:none; margin-left: 0.5rem;"><i class="animate-spin"
                                 data-lucide="loader-2" style="width: 16px;"></i></span>
                     </button>
+
+                    <div id="directions-btn-container" class="directions-btn-container">
+                        <button id="directions-btn" class="btn btn-secondary" style="width: 100%; background: var(--primary); color: #fff;" onclick="window.teamxMap.startNavigation()">
+                            <i data-lucide="navigation"></i> Start Live Directions
+                        </button>
+                    </div>
 
                     <!-- Legend -->
                     <div style="margin-top:2.5rem; padding-top: 1.5rem; border-top: 1px solid var(--card-border);">
