@@ -110,3 +110,9 @@ EcoStride relies on the following free-tier APIs to aggregate environmental data
 ## 🤝 Community & Reporting
 
 EcoStride features a built-in community reporting protocol. Users witnessing illegal industrial emissions, severe agricultural burning, or excessive vehicular pollution can drop a GPS pin and file a localized report. The backend `alert_service.py` automatically compiles this data and dispatches an automated email to a configured municipal authority.
+
+---
+
+## Acknowledgements
+This project is inspired by and references the foundational work from the **Auralis** project developed by Team Auralis.
+- Original Repository: [https://github.com/antonyjoseph2111/auralis](https://github.com/antonyjoseph2111/auralis)
