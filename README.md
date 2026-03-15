@@ -1,17 +1,14 @@
-# 🌿 EcoStride – Real-Time Air Quality Monitoring, Prediction & Clean Route Navigation
+# 🌿 EcoStride
+**A Full-Stack Platform for Real-Time Air Quality Monitoring & Clean Route Navigation**
 
-![Python](https://img.shields.io/badge/Python-3.8%2B-blue?style=flat-square&logo=python)
-![Flask](https://img.shields.io/badge/Flask-Backend-lightgrey?style=flat-square&logo=flask)
-![TensorFlow](https://img.shields.io/badge/TensorFlow-BiLSTM-orange?style=flat-square&logo=tensorflow)
+![React](https://img.shields.io/badge/Frontend-React.js-blue?style=flat-square&logo=react)
+![Vite](https://img.shields.io/badge/Build-Vite-646CFF?style=flat-square&logo=vite)
+![Flask](https://img.shields.io/badge/Backend-Flask-lightgrey?style=flat-square&logo=flask)
 ![SQLite](https://img.shields.io/badge/Database-SQLite-blue?style=flat-square&logo=sqlite)
-![License](https://img.shields.io/badge/License-Educational-green?style=flat-square)
-![Status](https://img.shields.io/badge/Status-Active-brightgreen?style=flat-square)
 
-> **EcoStride** is a smart air quality management platform designed to monitor, analyze, and predict urban air pollution — helping users make healthier decisions outdoors.
+> **EcoStride** is a smart environmental platform designed to track real-time urban air pollution, analyze health impacts, and actively route users through the cleanest possible paths using live AQI mapping. 
 
-The system integrates real-time environmental data, predictive analytics, and intelligent routing to minimize pollution exposure during activities such as jogging, walking, and cycling.
-
-> ✅ Runs entirely on **free resources and local setup** — no Docker, no paid APIs, no cloud infrastructure required.
+Built for hackathons and public safety, the system integrates global geocoding, real-time pollution data feeds, interactive maps, and community crowd-sourced reporting.
 
 ---
 
@@ -19,158 +16,97 @@ The system integrates real-time environmental data, predictive analytics, and in
 
 | Feature | Description |
 |---|---|
-| 📈 **AQI Forecasting** | Predicts short-term air quality trends using simulated BiLSTM models |
-| 🗺️ **Pollution-Aware Routing** | Finds safer outdoor routes with lower pollution exposure |
-| 🛰️ **Pollution Source Detection** | Simulates detection of pollution sources using satellite-inspired datasets |
-| 💊 **Health Advisory System** | Generates health recommendations based on real-time AQI levels |
-| ⚙️ **Policy Simulation Engine** | Simulates "what-if" environmental policy scenarios |
+| 🗺️ **Safe Routing Algorithm** | Calculates 5 distinct alternative routes (Cleanest, Safest, Balanced, Fastest, Industrial) dynamically weighted by the exact air pollution (AQI) exposure along every street. |
+| 📊 **Real-Time Dashboards** | Live air quality metrics for any city globally, breaking down specific pollutants (PM2.5, PM10, NO2, O3). |
+| 🔮 **72h Predictive Forecasting** | Forward-looking AQI predictions allowing users to plan outdoor activities. |
+| 🔔 **SMS & Email Alert Service** | Automated subscription service that notifies users when local AQI breaches their personalized safety threshold. |
+| 💊 **Health Advisory Engine** | AI-driven insights that translate raw pollution data into actionable health advice (powered by Groq / Llama). |
+| 🏛️ **Government Data Integration** | Prioritizes official Government of India (data.gov.in) datasets for maximum accuracy in Indian territories. |
 
 ---
 
-## 🔍 Feature Details
+## 🛠️ Technology Stack
 
-### 1. AQI Forecasting
-Predicts short-term air quality trends using simulated **BiLSTM models** powered by environmental data from **OpenWeatherMap** and **AQICN APIs**.
+**Frontend Architecture (React + Vite)**
+- **React.js (v18)** with Context API for global state management.
+- **Vite** for ultra-fast HMR and building.
+- **Leaflet & React-Leaflet** for interactive heatmap visualizations.
+- **Chart.js** for data trending and analytics displays.
 
-### 2. Pollution-Aware Routing
-Provides safer outdoor navigation by identifying routes with **lower pollution exposure** using **OSRM routing** and **Leaflet.js map visualization**.
-
-### 3. Pollution Source Detection
-Simulates detection of pollution sources by processing **satellite plume data** inspired by NASA / Sentinel-5P datasets.
-
-### 4. Health Advisory System
-Generates personalized health recommendations based on AQI levels using **local LLM models (Ollama)** or the **Groq API free tier**.
-
-### 5. Policy Simulation Engine
-Analyzes the potential impact of environmental policies by simulating scenarios related to traffic control, emissions reduction, and pollution mitigation strategies.
-
----
-
-## 🛠️ Tech Stack
-
-| Layer | Technology |
-|---|---|
-| **Backend** | Python, Flask |
-| **Data Processing** | Pandas, NumPy |
-| **Machine Learning** | TensorFlow / Keras (BiLSTM) |
-| **Maps & Visualization** | Leaflet.js |
-| **Routing** | OSRM |
-| **Database** | SQLite |
-| **APIs** | OpenWeatherMap, AQICN, Groq (optional) |
-
----
-
-## 📁 Project Structure
-
-```
-EcoStride/
-│
-├── app.py               # Main application entry point
-├── config.py            # API keys and configuration
-├── run_setup.py         # Database initialization script
-├── requirements.txt     # Python dependencies
-│
-├── models/              # ML model definitions and weights
-├── templates/           # HTML templates (Jinja2)
-├── static/              # CSS, JS, and assets
-├── database/            # SQLite database files
-└── data/                # Sample and simulation datasets
-```
+**Backend Architecture (Python + Flask)**
+- **Flask Framework** serving a headless REST API.
+- **SQLite3** for lightweight persistence (Community reports & Alert subscriptions).
+- **OSRM (Open Source Routing Machine)** for generating complex street-level geometric routes.
+- **python-dotenv** for secure environment credential management.
 
 ---
 
 ## 🚀 Quick Start Guide
 
 ### Prerequisites
+- **Node.js** (v18+)
+- **Python** (3.8+)
 
-- Python **3.8 or higher**
-
----
-
-### Step 1 — Clone the Repository
-
+### 1. Clone the Repository
 ```bash
-git clone https://github.com/your-username/EcoStride.git
+git clone https://github.com/shrikant-lunge/EcoStride.git
 cd EcoStride
 ```
 
-### Step 2 — Create a Virtual Environment
-
+### 2. Backend Setup
+Create and activate a Python virtual environment:
 ```bash
 python -m venv venv
-```
-
-Activate it:
-
-**Windows:**
-```bash
+# Windows:
 venv\Scripts\activate
-```
-
-**Mac / Linux:**
-```bash
+# Mac/Linux:
 source venv/bin/activate
 ```
 
-### Step 3 — Install Dependencies
-
+Install dependencies:
 ```bash
 pip install -r requirements.txt
 ```
 
-### Step 4 — Configure API Keys
-
-Open `config.py` and add your API keys:
-
-```python
-OPENWEATHER_API_KEY = "your_key_here"   # https://openweathermap.org/api
-AQICN_API_TOKEN     = "your_token_here" # https://aqicn.org/api/
-GROQ_API_KEY        = "your_key_here"   # Optional – for LLM health advisories
+**Configure Environment Variables:**
+Copy the example template to create your secure `.env` file!
+```bash
+cp .env.example .env
 ```
+*(Open `.env` and fill in your free API keys for OpenWeather, AQICN, and Groq).*
 
-> **Note:** If no API keys are provided, the system will automatically fall back to simulated data for demonstration purposes.
-
-### Step 5 — Initialize the Database
-
+Initialize the database and start the server:
 ```bash
 python run_setup.py
-```
-
-### Step 6 — Run the Application
-
-```bash
 python app.py
 ```
+*Backend runs on `http://127.0.0.1:5000`*
 
-Open your browser and navigate to:
-
+### 3. Frontend Setup
+Open a **new terminal window**, navigate to the frontend folder:
+```bash
+cd frontend
+npm install
+npm run dev
 ```
-http://127.0.0.1:5000
-```
+*Frontend runs on `http://localhost:5173`*
+
+Navigate to `http://localhost:5173` in your browser to use EcoStride!
 
 ---
 
-## 📌 API Reference
+## 📌 Third-Party API Integrations
 
-| API | Purpose | Free Tier |
-|---|---|---|
-| [OpenWeatherMap](https://openweathermap.org/api) | Weather & AQI data | ✅ Yes |
-| [AQICN](https://aqicn.org/api/) | Real-time AQI feeds | ✅ Yes |
-| [Groq](https://console.groq.com/) | LLM health advisories | ✅ Yes |
-| [OSRM](http://project-osrm.org/) | Pollution-aware routing | ✅ Open Source |
+EcoStride relies on the following free-tier APIs to aggregate environmental data:
 
----
-
-## 📄 License
-
-This project is released for **educational and research purposes only**.
+1. **[Govt of India Open Data](https://data.gov.in/)**: Official primary AQI source for Indian cities.
+2. **[OpenWeatherMap](https://openweathermap.org/api/air-pollution)**: Global fallback and live pollution coordinates.
+3. **[AQICN (WAQI)](https://aqicn.org/api/)**: Sensor-level station data for geographical pins.
+4. **[Nominatim (OSM)](https://nominatim.openstreetmap.org/)**: Forward and reverse geocoding with extreme local bias.
+5. **[Groq Compute](https://console.groq.com/)**: Ultra-fast LLM inference for the Health Advisory module.
 
 ---
 
-## Acknowledgements
+## 🤝 Community & Reporting
 
-- Inspired by modern urban air quality monitoring systems
-- Environmental datasets sourced from open platforms including OpenWeatherMap, AQICN, and NASA / Sentinel-5P inspired simulations
-- Routing powered by the open-source [OSRM Project](http://project-osrm.org/)
-- This project is based on the Auralis project developed by Team Auralis.
-Original repository: https://github.com/antonyjoseph2111/auralis
+EcoStride features a built-in community reporting protocol. Users witnessing illegal industrial emissions, severe agricultural burning, or excessive vehicular pollution can drop a GPS pin and file a localized report. The backend `alert_service.py` automatically compiles this data and dispatches an automated email to a configured municipal authority.
