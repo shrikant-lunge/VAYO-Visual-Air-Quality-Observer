@@ -33,3 +33,6 @@ pytz
 schedule
 python-dotenv
 
+# Firebase
+firebase-admin
+

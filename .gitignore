@@ -84,3 +84,5 @@ frontend/dist/
 frontend/eslint-result.json
 frontend/lint_errors.json
 frontend/lint_logs.txt
+
+eco-stride2026.json

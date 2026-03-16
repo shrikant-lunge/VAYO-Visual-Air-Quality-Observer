@@ -13,6 +13,17 @@ from models.forecasting import AQIForecaster
 from models.routing import RoutePlanner
 from models.health_advisory import HealthAdvisor
 from models.policy_analysis import PolicySimulator
+from auth import (
+    initialize_firebase, verify_google_token, user_exists,
+    get_user_data, create_user, update_user_profile, get_user_by_email
+)
+
+# Initialize Firebase
+try:
+    initialize_firebase()
+except Exception as e:
+    print(f"Warning: Firebase initialization failed: {e}")
+    print("Authentication endpoints will not work without Firebase credentials")
 
 # Initialize modules
 forecaster = AQIForecaster()
@@ -384,6 +395,229 @@ def download_compare_pdf():
     )
 
 
+# --- Authentication & Onboarding Endpoints ---
+@app.route('/api/auth/signin', methods=['POST'])
+def signin_with_google():
+    """
+    Verify Google ID token and sign in user
+    Expected JSON: { "idToken": "..." }
+    """
+    try:
+        data = request.json or {}
+        id_token = data.get('idToken')
+        
+        if not id_token:
+            return jsonify({"status": "error", "message": "idToken is required"}), 400
+        
+        # Verify token with Firebase
+        user_info = verify_google_token(id_token)
+        if not user_info:
+            return jsonify({"status": "error", "message": "Invalid or expired token"}), 401
+        
+        uid = user_info['uid']
+        email = user_info['email']
+        name = user_info['name']
+        
+        # Check if user exists
+        if not user_exists(uid):
+            # Create new user
+            success, message = create_user(uid, email, name)
+            if not success:
+                return jsonify({"status": "error", "message": message}), 400
+            
+            return jsonify({
+                "status": "success",
+                "message": "User created",
+                "user": {
+                    "uid": uid,
+                    "email": email,
+                    "name": name,
+                    "isNewUser": True
+                }
+            }), 201
+        else:
+            # User exists, return user data
+            user_data = get_user_data(uid)
+            return jsonify({
+                "status": "success",
+                "message": "User logged in",
+                "user": {
+                    "uid": uid,
+                    "email": email,
+                    "name": name,
+                    **user_data
+                },
+                "isNewUser": False
+            }), 200
+    
+    except Exception as e:
+        print(f"Sign-in error: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/auth/profile', methods=['GET'])
+def get_profile():
+    """
+    Get user profile data
+    Required header: Authorization: Bearer <idToken>
+    """
+    try:
+        auth_header = request.headers.get('Authorization', '')
+        if not auth_header.startswith('Bearer '):
+            return jsonify({"status": "error", "message": "No valid authorization token"}), 401
+        
+        id_token = auth_header[7:]  # Remove 'Bearer '
+        user_info = verify_google_token(id_token)
+        
+        if not user_info:
+            return jsonify({"status": "error", "message": "Invalid token"}), 401
+        
+        uid = user_info['uid']
+        user_data = get_user_data(uid)
+        
+        if not user_data:
+            return jsonify({"status": "error", "message": "User not found"}), 404
+        
+        return jsonify({
+            "status": "success",
+            "user": {
+                "uid": uid,
+                **user_data
+            }
+        }), 200
+    
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/auth/profile', methods=['POST'])
+def update_profile():
+    """
+    Update user profile with onboarding data
+    Required header: Authorization: Bearer <idToken>
+    Expected JSON: {
+        "name": "...",
+        "dob": "YYYY-MM-DD",
+        "age": 25,
+        "medical_conditions": ["Asthma", "..."],
+        "activity_level": "Moderate",
+        "emergency_contact": "...",
+        "allergies": "..."
+    }
+    """
+    try:
+        auth_header = request.headers.get('Authorization', '')
+        if not auth_header.startswith('Bearer '):
+            return jsonify({"status": "error", "message": "No valid authorization token"}), 401
+        
+        id_token = auth_header[7:]
+        user_info = verify_google_token(id_token)
+        
+        if not user_info:
+            return jsonify({"status": "error", "message": "Invalid token"}), 401
+        
+        uid = user_info['uid']
+        data = request.json or {}
+        
+        # Prepare profile data
+        profile_data = {
+            'dob': data.get('dob'),
+            'age': data.get('age'),
+            'medical_conditions': data.get('medical_conditions', []),
+            'activity_level': data.get('activity_level'),
+            'profile_completed': True
+        }
+        
+        # Optional fields
+        if data.get('emergency_contact'):
+            profile_data['emergency_contact'] = data.get('emergency_contact')
+        
+        if data.get('allergies'):
+            profile_data['allergies'] = data.get('allergies')
+        
+        # Update name if provided
+        if data.get('name'):
+            profile_data['name'] = data.get('name')
+        
+        success, message = update_user_profile(uid, profile_data)
+        
+        if not success:
+            return jsonify({"status": "error", "message": message}), 400
+        
+        return jsonify({
+            "status": "success",
+            "message": "Profile updated",
+            "user": {
+                "uid": uid,
+                **profile_data
+            }
+        }), 200
+    
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/auth/check-email', methods=['POST'])
+def check_email():
+    """
+    Check if email is already registered
+    Expected JSON: { "email": "..." }
+    """
+    try:
+        data = request.json or {}
+        email = data.get('email')
+        
+        if not email:
+            return jsonify({"status": "error", "message": "email is required"}), 400
+        
+        uid = get_user_by_email(email)
+        exists = uid is not None
+        
+        return jsonify({
+            "status": "success",
+            "exists": exists
+        }), 200
+    
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/auth/verify', methods=['POST'])
+def verify_token():
+    """
+    Verify if a Firebase Google ID token is valid.
+    Expected JSON: { "idToken": "..." }
+    """
+    try:
+        data = request.json or {}
+        id_token = data.get('idToken')
+
+        if not id_token:
+            return jsonify({
+                "status": "error",
+                "message": "idToken is required"
+            }), 400
+
+        # Verify token using Firebase Admin SDK
+        user_info = verify_google_token(id_token)
+
+        if not user_info:
+            return jsonify({
+                "status": "valid",
+                "valid": False,
+                "message": "Invalid or expired token"
+            }), 401
+
+        # Token is valid
+        return jsonify({
+            "status": "valid",
+            "valid": True,
+            "user": user_info
+        }), 200
+
+    except Exception as e:
+        # Log error for debugging
+        print("Error verifying token:", e)
+        return jsonify({
+            "status": "error",
+            "message": "Internal server error"
+        }), 500
 if __name__ == '__main__':
     from config import PORT, HOST, DEBUG
     print(f"Starting Team-X project on http://{HOST}:{PORT}")

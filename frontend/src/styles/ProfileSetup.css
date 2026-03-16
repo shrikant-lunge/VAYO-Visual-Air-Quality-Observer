@@ -1,0 +1,635 @@
+/* Profile Setup Page Styles */
+
+.profile-setup-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 40px 20px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu,
+    Cantarell, 'Helvetica Neue', sans-serif;
+}
+
+.profile-setup-content {
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+/* Header */
+.profile-header {
+  text-align: center;
+  color: white;
+  margin-bottom: 40px;
+}
+
+.profile-header h1 {
+  margin: 0 0 8px 0;
+  font-size: 36px;
+  font-weight: 700;
+}
+
+.profile-header p {
+  margin: 0;
+  font-size: 16px;
+  opacity: 0.95;
+}
+
+/* Progress Bar */
+.progress-bar {
+  margin-bottom: 32px;
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.progress-steps {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.progress-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  position: relative;
+}
+
+.step-number {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #e0e0e0;
+  color: #999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 16px;
+  transition: all 0.3s;
+}
+
+.progress-step.active .step-number {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.step-label {
+  font-size: 12px;
+  color: #666;
+  font-weight: 500;
+}
+
+.progress-step.active .step-label {
+  color: #333;
+  font-weight: 600;
+}
+
+.progress-line {
+  flex: 1;
+  height: 2px;
+  background: #e0e0e0;
+  margin: 0 8px;
+  min-width: 20px;
+  align-self: flex-start;
+  margin-top: 20px;
+}
+
+.progress-step:last-child .progress-line {
+  display: none;
+}
+
+.progress-step.active ~ .progress-step .progress-line {
+  background: #e0e0e0;
+}
+
+/* Form Content */
+.form-content {
+  background: white;
+  border-radius: 12px;
+  padding: 40px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+}
+
+.success-message {
+  background: #f0fdf4;
+  border: 2px solid #86efac;
+  color: #166534;
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  animation: slideInUp 0.3s ease;
+}
+
+.success-message p {
+  margin: 0;
+  font-weight: 500;
+}
+
+.error-message {
+  background: #fef2f2;
+  border: 2px solid #fecaca;
+  color: #b91c1c;
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.error-message p {
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* Form Step */
+.form-step h2 {
+  margin: 0 0 24px 0;
+  font-size: 24px;
+  color: #333;
+  font-weight: 600;
+}
+
+.form-step {
+  animation: fadeIn 0.3s ease;
+}
+
+/* Form Groups */
+.form-group {
+  margin-bottom: 24px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #333;
+  font-size: 14px;
+}
+
+.form-input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  transition: all 0.3s;
+  box-sizing: border-box;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.form-input.readonly {
+  background: #f5f5f5;
+  color: #999;
+  cursor: not-allowed;
+}
+
+.age-display {
+  margin-top: 8px;
+}
+
+.age-badge {
+  display: inline-block;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Form Sections */
+.form-section {
+  margin-bottom: 32px;
+  padding-bottom: 32px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.form-section:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.form-section h3 {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  color: #333;
+  font-weight: 600;
+}
+
+.section-description {
+  margin: 0 0 16px 0;
+  font-size: 13px;
+  color: #666;
+}
+
+/* Medical Conditions Grid */
+.conditions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.condition-chip {
+  padding: 10px 14px;
+  border: 2px solid #e0e0e0;
+  background: white;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-weight: 500;
+  font-size: 13px;
+  color: #333;
+}
+
+.condition-chip:hover {
+  border-color: #667eea;
+  background: #f8f9ff;
+}
+
+.condition-chip.selected {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-color: #667eea;
+}
+
+/* Other Condition Input */
+.other-condition-input {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.other-condition-input input {
+  flex: 1;
+}
+
+.btn-add-condition {
+  padding: 12px 20px;
+  background: #e0e0e0;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s;
+}
+
+.btn-add-condition:hover {
+  background: #d0d0d0;
+}
+
+.btn-add-condition:active {
+  transform: scale(0.98);
+}
+
+/* Selected Conditions Display */
+.selected-conditions {
+  margin-top: 20px;
+  padding: 16px;
+  background: #f8f9ff;
+  border-radius: 8px;
+}
+
+.selected-label {
+  margin: 0 0 12px 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #666;
+}
+
+.conditions-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.condition-tag {
+  background: white;
+  border: 1px solid #667eea;
+  color: #667eea;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.condition-tag .remove-btn {
+  background: none;
+  border: none;
+  color: #667eea;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+}
+
+.condition-tag .remove-btn:hover {
+  color: #764ba2;
+}
+
+/* Activity Options */
+.activity-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.activity-option {
+  padding: 16px;
+  border: 2px solid #e0e0e0;
+  background: white;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s;
+  text-align: left;
+}
+
+.activity-option:hover {
+  border-color: #667eea;
+  background: #f8f9ff;
+}
+
+.activity-option.selected {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-color: #667eea;
+  color: white;
+}
+
+.option-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.option-title {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.option-desc {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.activity-option.selected .option-desc {
+  opacity: 0.9;
+}
+
+/* Review Section */
+.review-section {
+  margin-top: 32px;
+  padding: 24px;
+  background: #f8f9ff;
+  border-radius: 8px;
+}
+
+.review-section h3 {
+  margin: 0 0 20px 0;
+  font-size: 16px;
+  color: #333;
+  font-weight: 600;
+}
+
+.review-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.review-item:last-child {
+  border-bottom: none;
+}
+
+.review-label {
+  font-weight: 600;
+  color: #666;
+  font-size: 13px;
+}
+
+.review-value {
+  color: #333;
+  font-weight: 500;
+  font-size: 14px;
+  text-align: right;
+  flex: 1;
+  margin-left: 20px;
+}
+
+/* Form Actions */
+.form-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 32px;
+  justify-content: space-between;
+}
+
+.btn {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  transition: all 0.3s;
+  font-family: inherit;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  flex: 1;
+}
+
+.btn-primary:hover:not(:disabled) {
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+  transform: translateY(-2px);
+}
+
+.btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: #e0e0e0;
+  color: #333;
+  flex: 1;
+}
+
+.btn-secondary:hover {
+  background: #d0d0d0;
+}
+
+.btn-link {
+  background: none;
+  color: #667eea;
+  border: none;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.btn-link:hover {
+  color: #764ba2;
+  text-decoration: underline;
+}
+
+.btn-submit {
+  flex: 1;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .profile-setup-container {
+    padding: 24px 16px;
+  }
+
+  .profile-header h1 {
+    font-size: 28px;
+  }
+
+  .form-content {
+    padding: 24px 20px;
+  }
+
+  .conditions-grid {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  }
+
+  .activity-options {
+    grid-template-columns: 1fr;
+  }
+
+  .form-actions {
+    flex-direction: column;
+  }
+
+  .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .progress-steps {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .progress-line {
+    display: none;
+  }
+
+  .progress-step {
+    flex: 0 1 auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .profile-setup-container {
+    padding: 16px 12px;
+  }
+
+  .profile-header h1 {
+    font-size: 24px;
+  }
+
+  .profile-header p {
+    font-size: 14px;
+  }
+
+  .profile-header {
+    margin-bottom: 24px;
+  }
+
+  .form-content {
+    padding: 20px 16px;
+  }
+
+  .form-step h2 {
+    font-size: 20px;
+    margin-bottom: 20px;
+  }
+
+  .conditions-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .condition-chip {
+    font-size: 12px;
+    padding: 8px 10px;
+  }
+
+  .form-group {
+    margin-bottom: 20px;
+  }
+
+  .section-description {
+    font-size: 12px;
+  }
+
+  .form-section {
+    margin-bottom: 24px;
+    padding-bottom: 24px;
+  }
+
+  .review-section {
+    margin-top: 24px;
+    padding: 16px;
+  }
+
+  .review-item {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .review-value {
+    text-align: left;
+    margin-left: 0;
+  }
+}

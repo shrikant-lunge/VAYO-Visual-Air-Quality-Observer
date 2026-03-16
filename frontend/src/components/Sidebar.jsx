@@ -1,6 +1,7 @@
 import React, { useState } from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import { useLocation } from "../hooks/useLocation";
+import { useAuth } from "../context/AuthContext";
 import {
   LayoutDashboard,
   CloudRain,
@@ -11,27 +12,32 @@ import {
   Users,
   Search,
   MapPin,
+  LogOut,
+  User,
 } from "lucide-react";
 import axios from "axios";
 import { API_BASE_URL } from "../apiConfig";
 
 const NAV_ITEMS = [
-  { to: "/", icon: LayoutDashboard, label: "Dashboard", sub: "Live AQI" },
-  { to: "/forecast", icon: CloudRain, label: "Forecast", sub: "72-Hour" },
-  { to: "/routing", icon: Route, label: "Routing", sub: "Eco Routes" },
-  { to: "/policy", icon: ShieldAlert, label: "Policy", sub: "Simulation" },
-  { to: "/safe-zones", icon: Heart, label: "Safe Zones", sub: "Clean Areas" },
-  { to: "/compare", icon: DivideSquare, label: "Compare", sub: "Cities" },
-  { to: "/community", icon: Users, label: "Community", sub: "Reports" },
+  { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard", sub: "Live AQI" },
+  { to: "/dashboard/forecast", icon: CloudRain, label: "Forecast", sub: "72-Hour" },
+  { to: "/dashboard/routing", icon: Route, label: "Routing", sub: "Eco Routes" },
+  { to: "/dashboard/policy", icon: ShieldAlert, label: "Policy", sub: "Simulation" },
+  { to: "/dashboard/safe-zones", icon: Heart, label: "Safe Zones", sub: "Clean Areas" },
+  { to: "/dashboard/compare", icon: DivideSquare, label: "Compare", sub: "Cities" },
+  { to: "/dashboard/community", icon: Users, label: "Community", sub: "Reports" },
 ];
 
 const Sidebar = () => {
+  const navigate = useNavigate();
   const { location, setManualLocation, getGPS } = useLocation();
+  const { user, logout } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [alertForm, setAlertForm] = useState({ contact: "", threshold: 100 });
   const [alertLoading, setAlertLoading] = useState(false);
   const [alertMessage, setAlertMessage] = useState("");
+  const [showUserMenu, setShowUserMenu] = useState(false);
 
   const handleSearch = async (e) => {
     const query = e.target.value;
@@ -81,6 +87,15 @@ const Sidebar = () => {
     }
   };
 
+  const handleLogout = () => {
+    logout();
+    navigate("/login", { replace: true });
+  };
+
+  const handleProfileSetup = () => {
+    navigate("/profile-setup");
+  };
+
   return (
     <>
       {/* ── Desktop sidebar ── */}
@@ -90,6 +105,49 @@ const Sidebar = () => {
           <div className="sidebar-brand-icon">🌿</div>
           Eco<span>Stride</span>
         </div>
+
+        {/* User Profile Section */}
+        {user && (
+          <div className="sidebar-user-section">
+            <button
+              className="user-profile-btn"
+              onClick={() => setShowUserMenu(!showUserMenu)}
+              title={user.name}
+            >
+              <div className="user-avatar">{user.name?.charAt(0)?.toUpperCase() || 'U'}</div>
+              <div className="user-info">
+                <div className="user-name">{user.name}</div>
+                <div className="user-email">{user.email}</div>
+              </div>
+            </button>
+
+            {showUserMenu && (
+              <div className="user-dropdown-menu">
+                <button
+                  className="user-dropdown-item"
+                  onClick={() => {
+                    handleProfileSetup();
+                    setShowUserMenu(false);
+                  }}
+                >
+                  <User size={16} />
+                  <span>Edit Profile</span>
+                </button>
+                <div className="user-dropdown-divider"></div>
+                <button
+                  className="user-dropdown-item logout"
+                  onClick={() => {
+                    handleLogout();
+                    setShowUserMenu(false);
+                  }}
+                >
+                  <LogOut size={16} />
+                  <span>Sign Out</span>
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Live strip */}
         <div className="sidebar-live-strip">
