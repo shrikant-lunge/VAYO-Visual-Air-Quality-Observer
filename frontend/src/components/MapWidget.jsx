@@ -121,6 +121,18 @@ const HeatmapLayer = ({ points }) => {
   return null;
 };
 
+// Force Leaflet to recalculate its viewport size to fix blank space renders
+const MapResizer = () => {
+  const map = useMap();
+  useEffect(() => {
+    // Short delay lets CSS finish painting before Leaflet measures
+    const t1 = setTimeout(() => map.invalidateSize(), 100);
+    const t2 = setTimeout(() => map.invalidateSize(), 500);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [map]);
+  return null;
+};
+
 const MapWidget = ({ lat, lon, city, showHeatmap = false, route, startPin, endPin, allRoutes = [], userPos = null, onRouteSelect, isNavigating = false }) => {
   // During navigation, center on user position
   const centerLat = (isNavigating && userPos) ? userPos.lat : lat;
@@ -157,13 +169,14 @@ const MapWidget = ({ lat, lon, city, showHeatmap = false, route, startPin, endPi
   }
 
   return (
-    <div className="map-container card" style={{ padding: 0, position: 'relative' }}>
+    <div className="map-container" style={{ width: '100%', height: '100%', flex: 1, position: 'relative' }}>
       {loading && (
         <div style={{position: 'absolute', top: 10, right: 10, background: 'var(--bg-tertiary)', padding: '4px 12px', zIndex: 1000, borderRadius: '8px', border: '1px solid var(--border-subtle)'}}>
           Loading Pins...
         </div>
       )}
-      <MapContainer center={[centerLat, centerLon]} zoom={13} style={{ height: '100%', width: '100%' }}>
+      <MapContainer center={[centerLat, centerLon]} zoom={13} style={{ width: '100%', height: '100%' }}>
+        <MapResizer />
         <TileLayer
           url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
           attribution='&copy; CARTO'

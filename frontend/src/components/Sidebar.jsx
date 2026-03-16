@@ -1,31 +1,48 @@
-import React, { useState } from 'react';
-import { NavLink } from 'react-router-dom';
-import { useLocation } from '../hooks/useLocation';
+import React, { useState } from "react";
+import { NavLink } from "react-router-dom";
+import { useLocation } from "../hooks/useLocation";
+import {
+  LayoutDashboard,
+  CloudRain,
+  Route,
+  ShieldAlert,
+  Heart,
+  DivideSquare,
+  Users,
+  Search,
+  MapPin,
+} from "lucide-react";
+import axios from "axios";
+import { API_BASE_URL } from "../apiConfig";
 
-import { MapPin, LayoutDashboard, CloudRain, Route, ShieldAlert, Heart, Search, DivideSquare, Users } from 'lucide-react';
-import axios from 'axios';
-import { API_BASE_URL } from '../apiConfig';
-
+const NAV_ITEMS = [
+  { to: "/", icon: LayoutDashboard, label: "Dashboard", sub: "Live AQI" },
+  { to: "/forecast", icon: CloudRain, label: "Forecast", sub: "72-Hour" },
+  { to: "/routing", icon: Route, label: "Routing", sub: "Eco Routes" },
+  { to: "/policy", icon: ShieldAlert, label: "Policy", sub: "Simulation" },
+  { to: "/safe-zones", icon: Heart, label: "Safe Zones", sub: "Clean Areas" },
+  { to: "/compare", icon: DivideSquare, label: "Compare", sub: "Cities" },
+  { to: "/community", icon: Users, label: "Community", sub: "Reports" },
+];
 
 const Sidebar = () => {
   const { location, setManualLocation, getGPS } = useLocation();
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
-  
-  // Alert Widget State
-  const [alertForm, setAlertForm] = useState({ contact: '', threshold: 100 });
+  const [alertForm, setAlertForm] = useState({ contact: "", threshold: 100 });
   const [alertLoading, setAlertLoading] = useState(false);
-  const [alertMessage, setAlertMessage] = useState('');
+  const [alertMessage, setAlertMessage] = useState("");
 
-  // Basic autocomplete using nominatim for Indian cities
   const handleSearch = async (e) => {
     const query = e.target.value;
     setSearchQuery(query);
     if (query.length > 2) {
       try {
-        const res = await axios.get(`https://nominatim.openstreetmap.org/search?q=${query}, India&format=json&limit=5`);
+        const res = await axios.get(
+          `https://nominatim.openstreetmap.org/search?q=${query}, India&format=json&limit=5`,
+        );
         setSearchResults(res.data);
-      } catch(err) {
+      } catch (err) {
         console.error(err);
       }
     } else {
@@ -36,9 +53,9 @@ const Sidebar = () => {
   const selectCity = (city) => {
     const lat = parseFloat(city.lat);
     const lon = parseFloat(city.lon);
-    let name = city.display_name.split(',')[0];
-    setManualLocation(name, 'India', lat, lon);
-    setSearchQuery('');
+    const name = city.display_name.split(",")[0];
+    setManualLocation(name, "India", lat, lon);
+    setSearchQuery("");
     setSearchResults([]);
   };
 
@@ -46,136 +63,221 @@ const Sidebar = () => {
     e.preventDefault();
     if (!alertForm.contact) return;
     setAlertLoading(true);
-    setAlertMessage('');
+    setAlertMessage("");
     try {
       const res = await axios.post(`${API_BASE_URL}/api/alerts/subscribe`, {
-
         contact: alertForm.contact,
         threshold: alertForm.threshold,
         city: location.city,
         lat: location.lat,
-        lon: location.lon
+        lon: location.lon,
       });
-      setAlertMessage(res.data.message || 'Subscribed!');
-      setAlertForm({ contact: '', threshold: 100 });
+      setAlertMessage(res.data.message || "Subscribed!");
+      setAlertForm({ contact: "", threshold: 100 });
     } catch {
-      setAlertMessage('Error subscribing.');
+      setAlertMessage("Error subscribing.");
     } finally {
       setAlertLoading(false);
     }
   };
 
   return (
-    <aside className="sidebar">
-      <div className="logo">🌿 EcoStride</div>
-      
-      <div className="location-badge">
-        <MapPin size={16} className={location.loading ? "animate-pulse" : ""} />
-        <div>
-          <div style={{fontWeight: 'bold'}}>{location.city}</div>
-          <div style={{fontSize: '0.75rem', color: 'var(--text-secondary)'}}>{location.state || "India"}</div>
+    <>
+      {/* ── Desktop sidebar ── */}
+      <aside className="sidebar">
+        {/* Brand */}
+        <div className="sidebar-brand">
+          <div className="sidebar-brand-icon">🌿</div>
+          Eco<span>Stride</span>
         </div>
-      </div>
 
-      <div style={{ padding: '0 16px', marginBottom: '16px', position: 'relative' }}>
-        <div style={{position: 'relative'}}>
-          <Search size={14} style={{position: 'absolute', top: 12, left: 10, color: 'var(--text-secondary)'}}/>
-          <input 
-            type="text" 
-            placeholder="Search City..." 
+        {/* Live strip */}
+        <div className="sidebar-live-strip">
+          <span className="live-dot" />
+          <span className="live-label">LIVE</span>
+          <span className="live-city">{location.city || "Locating…"}</span>
+        </div>
+
+        {/* City search */}
+        <div className="sidebar-search-wrap">
+          <Search
+            size={13}
+            className="sidebar-search-icon"
+            style={{ top: "18px", transform: "none" }}
+          />
+          <input
+            type="text"
+            placeholder="Search city…"
             value={searchQuery}
             onChange={handleSearch}
-            style={{ paddingLeft: '32px', fontSize: '0.85rem', width: '100%' }}
-          />
-          <button 
-            type="button"
-            onClick={getGPS}
-            title="Reset to My Location"
+            className="input"
             style={{
-              position: 'absolute', right: 8, top: 4, background: 'none', border: 'none', 
-              cursor: 'pointer', color: 'var(--accent-cyan)', fontSize: '1.1rem'
+              paddingLeft: "32px",
+              paddingRight: "32px",
+              height: "36px",
+              fontSize: "0.82rem",
+            }}
+          />
+          <button
+            type="button"
+            className="sidebar-gps-btn"
+            onClick={getGPS}
+            title="My Location"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="#34A853">
+              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5z" />
+            </svg>
+          </button>
+          {searchResults.length > 0 && (
+            <div className="sidebar-dropdown">
+              {searchResults.map((res) => (
+                <div
+                  key={res.place_id}
+                  className="sidebar-dropdown-item"
+                  onClick={() => selectCity(res)}
+                >
+                  {res.display_name}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Nav */}
+        <nav className="sidebar-nav">
+          {NAV_ITEMS.map(({ to, icon: Icon, label, sub }) => (
+            <NavLink
+              key={to}
+              to={to}
+              end={to === "/"}
+              className={({ isActive }) =>
+                `nav-item${isActive ? " active" : ""}`
+              }
+            >
+              <Icon size={17} className="nav-item-icon" />
+              <span className="nav-item-text">
+                <span className="nav-item-label">{label}</span>
+                <span className="nav-item-sub">{sub}</span>
+              </span>
+            </NavLink>
+          ))}
+        </nav>
+
+        {/* Alert widget (desktop only) */}
+        {!window.matchMedia("(max-width: 768px)").matches && (
+          <form
+            onSubmit={handleSubscribe}
+            style={{
+              background: "var(--bg-card)",
+              border: "1px solid rgba(245,197,66,0.15)",
+              borderRadius: "8px",
+              padding: "0.75rem",
+              margin: "12px",
+              marginTop: "auto",
+              display: "flex",
+              flexDirection: "column",
+              gap: "8px",
             }}
           >
-            📍
-          </button>
-        </div>
-        
-        {searchResults.length > 0 && (
-          <div style={{
-            position: 'absolute', top: '100%', left: 16, right: 16, 
-            background: 'var(--bg-tertiary)', border: '1px solid var(--border-subtle)',
-            borderRadius: '8px', zIndex: 50, marginTop: '4px', overflow: 'hidden'
-          }}>
-            {searchResults.map(res => (
-              <div 
-                key={res.place_id} 
-                onClick={() => selectCity(res)}
-                style={{ padding: '8px 12px', fontSize: '0.8rem', cursor: 'pointer', borderBottom: '1px solid var(--border-subtle)' }}
+            <div
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: "0.7rem",
+                color: "var(--aqi-moderate)",
+                letterSpacing: "0.06em",
+                textTransform: "uppercase",
+                fontWeight: 600,
+              }}
+            >
+              🔔 AQI Alerts
+            </div>
+            <input
+              type="text"
+              placeholder="Email or phone"
+              value={alertForm.contact}
+              onChange={(e) =>
+                setAlertForm({ ...alertForm, contact: e.target.value })
+              }
+              className="input"
+              style={{
+                padding: "6px 10px",
+                fontSize: "0.75rem",
+                height: "auto",
+              }}
+              required
+            />
+            <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+              <span
+                style={{
+                  color: "var(--text-secondary)",
+                  fontSize: "0.7rem",
+                  fontFamily: "var(--font-mono)",
+                }}
               >
-                {res.display_name}
+                AQI &gt;
+              </span>
+              <select
+                value={alertForm.threshold}
+                onChange={(e) =>
+                  setAlertForm({
+                    ...alertForm,
+                    threshold: parseInt(e.target.value),
+                  })
+                }
+                className="input"
+                style={{
+                  padding: "4px 6px",
+                  fontSize: "0.75rem",
+                  height: "auto",
+                  flex: 1,
+                }}
+              >
+                <option value="50">50 — Mod</option>
+                <option value="100">100 — Unhealthy</option>
+                <option value="150">150 — Poor</option>
+              </select>
+            </div>
+            <button
+              type="submit"
+              className="btn-primary"
+              style={{ padding: "6px", fontSize: "0.7rem", width: "100%" }}
+              disabled={alertLoading}
+            >
+              {alertLoading ? "Wait…" : "Subscribe"}
+            </button>
+            {alertMessage && (
+              <div
+                style={{
+                  color: "var(--accent)",
+                  fontSize: "0.65rem",
+                  textAlign: "center",
+                  fontFamily: "var(--font-mono)",
+                }}
+              >
+                {alertMessage}
               </div>
-            ))}
-          </div>
+            )}
+          </form>
         )}
-      </div>
+      </aside>
 
-      <nav style={{ flex: 1 }}>
-        <NavLink to="/" className={({isActive}) => isActive ? "nav-item active" : "nav-item"}>
-          <LayoutDashboard size={18} /> Dashboard
-        </NavLink>
-        <NavLink to="/forecast" className={({isActive}) => isActive ? "nav-item active" : "nav-item"}>
-          <CloudRain size={18} /> AQI Forecast
-        </NavLink>
-        <NavLink to="/routing" className={({isActive}) => isActive ? "nav-item active" : "nav-item"}>
-          <Route size={18} /> Safe Routing
-        </NavLink>
-        <NavLink to="/policy" className={({isActive}) => isActive ? "nav-item active" : "nav-item"}>
-          <ShieldAlert size={18} /> Policy Analysis
-        </NavLink>
-        <NavLink to="/safe-zones" className={({isActive}) => isActive ? "nav-item active" : "nav-item"}>
-          <Heart size={18} /> Safe Zones
-        </NavLink>
-        <NavLink to="/compare" className={({isActive}) => isActive ? "nav-item active" : "nav-item"}>
-          <DivideSquare size={18} /> Compare Cities
-        </NavLink>
-        <NavLink to="/community" className={({isActive}) => isActive ? "nav-item active" : "nav-item"}>
-          <Users size={18} /> Community Reports
-        </NavLink>
-      </nav>
-      
-      {/* Alert Subscription Widget */}
-      <form onSubmit={handleSubscribe} style={{ margin: '16px', padding: '16px', background: 'var(--bg-glass)', borderRadius: '12px', fontSize: '0.8rem' }}>
-        <div style={{ fontWeight: 'bold', marginBottom: '8px', color: 'var(--accent-cyan)' }}>🔔 Alerts for {location.city}</div>
-        <p style={{ color: 'var(--text-secondary)', marginBottom: '8px' }}>Get notified when AQI exceeds threshold.</p>
-        
-        <input 
-          type="text" 
-          placeholder="Email or Phone No." 
-          value={alertForm.contact}
-          onChange={e => setAlertForm({...alertForm, contact: e.target.value})}
-          style={{ marginBottom: '8px', padding: '8px', fontSize: '0.8rem' }}
-          required
-        />
-        
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '8px', alignItems:'center'}}>
-          <span style={{color:'var(--text-secondary)'}}>AQI &gt;</span>
-          <select 
-            value={alertForm.threshold}
-            onChange={e => setAlertForm({...alertForm, threshold: parseInt(e.target.value)})}
-            style={{ padding: '8px', fontSize: '0.8rem', flex: 1 }}
+      {/* ── Mobile bottom nav ── */}
+      <nav className="mobile-bottom-nav">
+        {NAV_ITEMS.slice(0, 5).map(({ to, icon: Icon, label }) => (
+          <NavLink
+            key={to}
+            to={to}
+            end={to === "/"}
+            className={({ isActive }) =>
+              `mobile-nav-item${isActive ? " active" : ""}`
+            }
           >
-            <option value="50">50 (Moderate)</option>
-            <option value="100">100 (Unhealthy)</option>
-            <option value="150">150 (Very Poor)</option>
-          </select>
-        </div>
-        
-        <button type="submit" className="btn-secondary" style={{ width: '100%', padding: '8px' }} disabled={alertLoading}>
-          {alertLoading ? 'Wait...' : 'Subscribe'}
-        </button>
-        {alertMessage && <div style={{marginTop:'8px', color:'var(--accent-cyan)', fontSize:'0.75rem', textAlign:'center'}}>{alertMessage}</div>}
-      </form>
-    </aside>
+            <Icon size={20} />
+            {label}
+          </NavLink>
+        ))}
+      </nav>
+    </>
   );
 };
 

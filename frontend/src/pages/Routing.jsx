@@ -3,6 +3,17 @@ import axios from 'axios';
 import { useLocation } from '../hooks/useLocation';
 import MapWidget from '../components/MapWidget';
 import { API_BASE_URL } from '../apiConfig';
+import L from 'leaflet';
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: markerIcon2x,
+  iconUrl: markerIcon,
+  shadowUrl: markerShadow,
+});
 
 // ─────────────────────────────────────────────────────────────────
 // Search for place suggestions via Nominatim (restricted to India)
@@ -213,10 +224,10 @@ const Routing = () => {
   const centerLon = location.lon || userPos?.lon || 77.7489;
 
   return (
-    <div className="grid grid-cols-12" style={{ height: 'calc(100vh - 120px)' }}>
+    <div className="routing-layout">
 
       {/* ── Left Panel ──────────────────────────────────── */}
-      <div className="col-span-4 card" style={{ display: 'flex', flexDirection: 'column', gap: '14px', overflowY: 'auto', padding: '20px', position: 'relative' }}>
+      <div className="routing-routes-panel card" style={{ display: 'flex', flexDirection: 'column', gap: '14px', overflowY: 'auto', padding: '20px', position: 'relative' }}>
         <div>
           <h2 style={{ marginBottom: '2px' }}>🗺️ Eco-Route Planner</h2>
           <p className="text-muted" style={{ fontSize: '0.82rem' }}>Plan dynamic, healthy paths anywhere in India.</p>
@@ -343,7 +354,7 @@ const Routing = () => {
         </div>
       </div>
 
-      <div className="col-span-8" style={{ position: 'relative' }}>
+      <div className="routing-map-panel">
         <MapWidget
           lat={centerLat} lon={centerLon} city={location.city || 'Amravati'}
           route={selectedRoute} allRoutes={routes}
