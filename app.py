@@ -618,6 +618,116 @@ def verify_token():
             "status": "error",
             "message": "Internal server error"
         }), 500
+# ─── Admin API Endpoints ──────────────────────────────────────────────────────
+
+@app.route('/api/admin/users', methods=['GET'])
+def admin_list_users():
+    """
+    Return all users from Firebase Realtime DB.
+    """
+    try:
+        from firebase_admin import db as rtdb
+        users_ref = rtdb.reference('users')
+        users_data = users_ref.get()
+
+        if not users_data:
+            return jsonify({"status": "success", "users": []}), 200
+
+        users_list = []
+        for uid, data in users_data.items():
+            if data:
+                users_list.append({
+                    "uid":       uid,
+                    "name":      data.get("name", ""),
+                    "email":     data.get("email", ""),
+                    "createdAt": data.get("created_at", ""),
+                    "status":    data.get("status", "active"),
+                })
+
+        return jsonify({"status": "success", "users": users_list}), 200
+    except Exception as e:
+        print(f"Admin list users error: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route('/api/admin/users/<uid>/block', methods=['POST'])
+def admin_block_user(uid):
+    """Set user status to 'blocked' in Realtime DB."""
+    try:
+        from firebase_admin import db as rtdb
+        user_ref = rtdb.reference(f'users/{uid}')
+        if user_ref.get() is None:
+            return jsonify({"status": "error", "message": "User not found"}), 404
+        user_ref.update({"status": "blocked"})
+        return jsonify({"status": "success", "message": "User blocked"}), 200
+    except Exception as e:
+        print(f"Admin block user error: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route('/api/admin/users/<uid>/unblock', methods=['POST'])
+def admin_unblock_user(uid):
+    """Set user status back to 'active' in Realtime DB."""
+    try:
+        from firebase_admin import db as rtdb
+        user_ref = rtdb.reference(f'users/{uid}')
+        if user_ref.get() is None:
+            return jsonify({"status": "error", "message": "User not found"}), 404
+        user_ref.update({"status": "active"})
+        return jsonify({"status": "success", "message": "User unblocked"}), 200
+    except Exception as e:
+        print(f"Admin unblock user error: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route('/api/admin/users/<uid>', methods=['DELETE'])
+def admin_delete_user(uid):
+    """
+    Delete a user:
+    1. Remove from Firebase Auth
+    2. Remove from Realtime DB users/
+    3. Add email to blacklist/
+    """
+    try:
+        from firebase_admin import auth as fbauth, db as rtdb
+        from datetime import datetime
+
+        # Get user data before deletion for blacklist
+        user_ref = rtdb.reference(f'users/{uid}')
+        user_data = user_ref.get()
+
+        if not user_data:
+            return jsonify({"status": "error", "message": "User not found"}), 404
+
+        email = user_data.get("email", "")
+
+        # 1. Delete from Firebase Auth (best-effort)
+        try:
+            fbauth.delete_user(uid)
+        except Exception as auth_err:
+            print(f"Firebase Auth delete error (continuing): {auth_err}")
+
+        # 2. Remove from Realtime DB
+        user_ref.delete()
+
+        # 3. Blacklist the email
+        if email:
+            blacklist_ref = rtdb.reference('blacklist')
+            blacklist_ref.push({
+                "email":     email,
+                "blockedAt": datetime.now().isoformat(),
+            })
+
+        return jsonify({
+            "status":  "success",
+            "message": f"User {uid} deleted and email blacklisted."
+        }), 200
+
+    except Exception as e:
+        print(f"Admin delete user error: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
 if __name__ == '__main__':
     from config import PORT, HOST, DEBUG
     print(f"Starting Team-X project on http://{HOST}:{PORT}")

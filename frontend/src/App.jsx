@@ -14,6 +14,9 @@ import Policy from './pages/Policy';
 import SafeZones from './pages/SafeZones';
 import Compare from './pages/Compare';
 import Community from './pages/Community';
+import AdminLogin from './pages/AdminLogin';
+import AdminDashboard from './pages/AdminDashboard';
+import AdminProtectedRoute from './components/AdminProtectedRoute';
 
 function App() {
   return (
@@ -43,6 +46,17 @@ function App() {
 
           {/* Catch all - redirect to login */}
           <Route path="*" element={<Navigate to="/login" replace />} />
+
+          {/* Admin Routes */}
+          <Route path="/admin-login" element={<AdminLogin />} />
+          <Route
+            path="/admin"
+            element={
+              <AdminProtectedRoute>
+                <AdminDashboard />
+              </AdminProtectedRoute>
+            }
+          />
         </Routes>
       </AuthProvider>
     </BrowserRouter>
