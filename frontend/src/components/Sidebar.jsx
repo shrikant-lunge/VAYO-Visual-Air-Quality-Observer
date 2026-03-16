@@ -99,7 +99,7 @@ const Sidebar = () => {
         </div>
 
         {/* City search */}
-        <div className="sidebar-search-wrap">
+        <div className="sidebar-search-wrap" style={{ position: "relative" }}>
           <Search
             size={13}
             className="sidebar-search-icon"

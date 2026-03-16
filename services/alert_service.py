@@ -58,7 +58,10 @@ class AQIAlertService:
         conn.close()
         
     def subscribe(self, contact, contact_type, city, lat, lon, threshold=100):
+        # Remove existing subscription for this contact
         self.unsubscribe(contact)
+
+        # Save new subscription to DB
         conn = sqlite3.connect(self.db_path)
         c = conn.cursor()
         c.execute('''
@@ -67,7 +70,109 @@ class AQIAlertService:
         ''', (contact, contact_type, city, lat, lon, threshold))
         conn.commit()
         conn.close()
-        
+
+        # FIX: Send confirmation immediately on subscribe
+        if contact_type == 'email':
+            self._send_subscription_confirmation(contact, city, threshold)
+        elif contact_type == 'sms':
+            self._send_sms_confirmation(contact, city, threshold)
+
+    def _send_subscription_confirmation(self, email_addr, city, threshold):
+        """Send a confirmation email immediately when user subscribes."""
+        if not SMTP_EMAIL or not SMTP_APP_PASSWORD:
+            print("Confirmation email not sent: SMTP credentials missing")
+            return
+
+        html = f"""
+        <html><body style="font-family:Arial;background:#0d1117;color:#fff;padding:20px">
+          <div style="max-width:600px;margin:auto;background:#161b22;border-radius:16px;padding:24px;border:1px solid #30363d">
+
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+              <span style="font-size:2rem">🌿</span>
+              <h2 style="margin:0;color:#00e5a0;font-family:Arial">EcoStride</h2>
+            </div>
+
+            <h3 style="color:#e8f0f2;margin-bottom:8px">✅ You're subscribed to AQI Alerts!</h3>
+            <p style="color:#7a9ba8;margin-bottom:20px">
+              You'll receive an alert email whenever the Air Quality Index in 
+              <strong style="color:#e8f0f2">{city}</strong> exceeds 
+              <strong style="color:#f5c542">AQI {threshold}</strong>.
+            </p>
+
+            <div style="background:#0d1518;border:1px solid #30363d;border-radius:12px;padding:16px;margin-bottom:20px">
+              <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+                <span style="color:#7a9ba8;font-size:0.85rem">📍 City</span>
+                <span style="color:#e8f0f2;font-weight:bold">{city}</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+                <span style="color:#7a9ba8;font-size:0.85rem">⚠️ Alert Threshold</span>
+                <span style="color:#f5c542;font-weight:bold">AQI &gt; {threshold}</span>
+              </div>
+              <div style="display:flex;justify-content:space-between">
+                <span style="color:#7a9ba8;font-size:0.85rem">📧 Subscribed Email</span>
+                <span style="color:#e8f0f2">{email_addr}</span>
+              </div>
+            </div>
+
+            <p style="color:#7a9ba8;font-size:0.85rem;margin-bottom:20px">
+              When AQI crosses your threshold, we'll send you health recommendations 
+              and safe routing suggestions instantly.
+            </p>
+
+            <a href="https://noninfallibly-extraversive-fairy.ngrok-free.dev" 
+               style="background:#00e5a0;color:#080d0f;padding:12px 24px;border-radius:8px;
+                      text-decoration:none;display:inline-block;font-weight:bold;font-size:0.9rem">
+              🗺️ View Live AQI Dashboard
+            </a>
+
+            <hr style="border:none;border-top:1px solid #30363d;margin:24px 0">
+            <p style="color:#3d5a64;font-size:0.75rem;text-align:center">
+              EcoStride — Environmental Health & Safe Routing Platform<br>
+              To unsubscribe, visit the Community page and enter your email.
+            </p>
+          </div>
+        </body></html>"""
+
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = f"✅ EcoStride Alert Subscription Confirmed — {city}"
+        msg['From']    = SMTP_EMAIL
+        msg['To']      = email_addr
+        msg.attach(MIMEText(html, 'html'))
+
+        try:
+            server = smtplib.SMTP('smtp.gmail.com', 587)
+            server.starttls()
+            server.login(SMTP_EMAIL, SMTP_APP_PASSWORD)
+            server.send_message(msg)
+            server.quit()
+            print(f"Confirmation email sent to {email_addr}")
+        except Exception as e:
+            print(f"Failed to send confirmation email to {email_addr}: {e}")
+
+    def _send_sms_confirmation(self, phone, city, threshold):
+        """Send confirmation SMS immediately when user subscribes."""
+        if not FAST2SMS_API_KEY:
+            print("SMS confirmation not sent: Fast2SMS API key missing")
+            return
+        msg = f"EcoStride: You're subscribed to AQI alerts for {city}. You'll be notified when AQI exceeds {threshold}. Reply STOP to unsubscribe."
+        url = "https://www.fast2sms.com/dev/bulkV2"
+        payload = {
+            "route": "q",
+            "message": msg,
+            "language": "english",
+            "flash": 0,
+            "numbers": phone.replace('+91', '').strip()
+        }
+        headers = {
+            "authorization": FAST2SMS_API_KEY,
+            "Content-Type": "application/x-www-form-urlencoded"
+        }
+        try:
+            requests.post(url, data=payload, headers=headers)
+            print(f"Confirmation SMS sent to {phone}")
+        except Exception as e:
+            print(f"Failed to send confirmation SMS: {e}")
+
     def unsubscribe(self, contact):
         conn = sqlite3.connect(self.db_path)
         c = conn.cursor()
@@ -82,31 +187,55 @@ class AQIAlertService:
             
         html = f"""
         <html><body style="font-family:Arial;background:#0d1117;color:#fff;padding:20px">
-          <div style="max-width:600px;margin:auto;background:#161b22;border-radius:16px;padding:24px">
-            <h2 style="color:#ff4444">⚠️ AQI Health Alert — {city}</h2>
-            <div style="background:#ff4444;border-radius:12px;padding:16px;text-align:center">
-              <div style="font-size:48px;font-weight:bold">{aqi}</div>
-              <div>Current AQI Level</div>
+          <div style="max-width:600px;margin:auto;background:#161b22;border-radius:16px;padding:24px;border:1px solid #30363d">
+
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+              <span style="font-size:2rem">🌿</span>
+              <h2 style="margin:0;color:#00e5a0">EcoStride</h2>
             </div>
-            <p>Air quality in <b>{city}</b> has reached <b>AQI {aqi}</b>.</p>
-            <p><b>Recommendation: Stay indoors. Avoid outdoor activities.</b></p>
-            <ul>
-              <li>Keep windows and doors closed</li>
-              <li>Use air purifiers if available</li>
-              <li>Wear N95 mask if going outside is unavoidable</li>
-              <li>Avoid exercise outdoors</li>
-            </ul>
-            <a href="http://localhost:5173" style="background:#00b4d8;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block">
-              View Live AQI Map
+
+            <h2 style="color:#ff4f6b;margin-bottom:8px">⚠️ AQI Health Alert — {city}</h2>
+
+            <div style="background:#ff4f6b22;border:1px solid #ff4f6b44;border-radius:12px;
+                        padding:20px;text-align:center;margin-bottom:20px">
+              <div style="font-size:56px;font-weight:bold;color:#ff4f6b;line-height:1">{aqi}</div>
+              <div style="color:#7a9ba8;font-size:0.85rem;margin-top:4px">Current AQI Level</div>
+            </div>
+
+            <p style="color:#e8f0f2">
+              Air quality in <strong>{city}</strong> has reached 
+              <strong style="color:#ff4f6b">AQI {aqi}</strong> — above your alert threshold.
+            </p>
+
+            <div style="background:#0d1518;border:1px solid #30363d;border-radius:12px;padding:16px;margin:16px 0">
+              <p style="color:#f5c542;font-weight:bold;margin-bottom:8px">🛡️ Health Recommendations:</p>
+              <ul style="color:#7a9ba8;margin:0;padding-left:20px;line-height:1.8">
+                <li>Stay indoors and keep windows closed</li>
+                <li>Use air purifiers if available</li>
+                <li>Wear N95 mask if going outside is unavoidable</li>
+                <li>Avoid exercise and outdoor activities</li>
+                <li>Keep children and elderly indoors</li>
+              </ul>
+            </div>
+
+            <a href="http://localhost:5173" 
+               style="background:#00e5a0;color:#080d0f;padding:12px 24px;border-radius:8px;
+                      text-decoration:none;display:inline-block;font-weight:bold;font-size:0.9rem">
+              🗺️ View Safe Routes on EcoStride
             </a>
+
+            <hr style="border:none;border-top:1px solid #30363d;margin:24px 0">
+            <p style="color:#3d5a64;font-size:0.75rem;text-align:center">
+              EcoStride — Environmental Health & Safe Routing Platform<br>
+              To unsubscribe, visit the Community page and enter your email.
+            </p>
           </div>
         </body></html>"""
         
         msg = MIMEMultipart('alternative')
-        msg['Subject'] = f"⚠️ AQI Health Alert: {city} is at {aqi}"
-        msg['From'] = SMTP_EMAIL
-        msg['To'] = email_addr
-        
+        msg['Subject'] = f"⚠️ AQI Alert: {city} is at {aqi} — Stay Safe"
+        msg['From']    = SMTP_EMAIL
+        msg['To']      = email_addr
         msg.attach(MIMEText(html, 'html'))
         
         try:
@@ -115,6 +244,7 @@ class AQIAlertService:
             server.login(SMTP_EMAIL, SMTP_APP_PASSWORD)
             server.send_message(msg)
             server.quit()
+            print(f"Alert email sent to {email_addr}")
         except Exception as e:
             print(f"Failed to send email to {email_addr}: {e}")
 
@@ -123,7 +253,6 @@ class AQIAlertService:
             print("Authority report not sent: Missing credentials or authority email")
             return False
 
-        # Save to DB
         conn = sqlite3.connect(self.db_path)
         c = conn.cursor()
         c.execute('''
@@ -133,7 +262,6 @@ class AQIAlertService:
         conn.commit()
         conn.close()
 
-        # Send Email
         subject = f"🚨 COMMUNITY REPORT: {report_type.upper()} in {city}"
         body = f"""
         <html><body style="font-family:Arial;background:#f8f9fa;padding:20px">
@@ -153,8 +281,8 @@ class AQIAlertService:
         
         msg = MIMEMultipart('alternative')
         msg['Subject'] = subject
-        msg['From'] = SMTP_EMAIL
-        msg['To'] = AUTHORITY_EMAIL
+        msg['From']    = SMTP_EMAIL
+        msg['To']      = AUTHORITY_EMAIL
         msg.attach(MIMEText(body, 'html'))
 
         try:
