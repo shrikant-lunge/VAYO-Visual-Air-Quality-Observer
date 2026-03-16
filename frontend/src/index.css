@@ -87,6 +87,7 @@ h6 {
   position: fixed;
   height: 100vh;
   overflow-y: auto;
+  overflow-x: visible;
   z-index: 1000;
 }
 
@@ -355,6 +356,46 @@ h6 {
   grid-template-columns: 280px 1fr;
   gap: 20px;
   align-items: start;
+}
+
+/* ── Sidebar search dropdown — floats, never pushes layout ── */
+.sidebar-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 14px;
+  right: 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  z-index: 9999;
+  max-height: 220px;
+  overflow-y: auto;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.sidebar-dropdown-item {
+  padding: 9px 12px;
+  font-size: 0.78rem;
+  font-family: var(--font-body);
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  transition:
+    background 0.15s,
+    color 0.15s;
+  /* Truncate long names to one line */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-dropdown-item:last-child {
+  border-bottom: none;
+}
+
+.sidebar-dropdown-item:hover {
+  background: var(--accent-dim);
+  color: var(--accent);
 }
 
 /* AQI Gauge card */
@@ -923,5 +964,122 @@ select option {
   .main-content {
     padding: 0.75rem;
     padding-bottom: 70px;
+  }
+}
+
+/* ── Mobile Search Bar ── */
+.mobile-search-bar {
+  display: none; /* hidden on desktop */
+}
+
+@media (max-width: 768px) {
+  .mobile-search-bar {
+    display: block;
+    position: relative;
+    margin-bottom: 20px;
+    z-index: 1001; /* Above sidebar fixed elements if needed */
+  }
+
+  .mobile-search-input-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    transition:
+      border-color 0.2s,
+      box-shadow 0.2s;
+  }
+
+  .mobile-search-input-wrap:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-dim);
+  }
+
+  .mobile-search-input-wrap input {
+    width: 100%;
+    padding: 12px 44px 12px 40px;
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: 0.9rem;
+    outline: none;
+  }
+
+  .mobile-search-input-wrap .sidebar-search-icon {
+    opacity: 0.6;
+  }
+
+  .mobile-search-dropdown {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    z-index: 9999;
+    max-height: 240px;
+    overflow-y: auto;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    animation: slideUp 0.2s ease;
+  }
+
+  .mobile-search-dropdown-item {
+    padding: 12px 16px;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition:
+      background 0.15s,
+      color 0.15s;
+  }
+
+  .mobile-search-dropdown-item:last-child {
+    border-bottom: none;
+  }
+
+  .mobile-search-dropdown-item:hover {
+    background: var(--accent-dim);
+    color: var(--accent);
+  }
+}
+
+/* ── Fullscreen Map (Routing) ── */
+.map-tap-hint {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .routing-map-panel[style*="position: fixed"] .leaflet-container {
+    height: 100vh !important;
+    width: 100vw !important;
+  }
+
+  .map-tap-hint {
+    display: block;
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(13, 21, 24, 0.85);
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    padding: 5px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    z-index: 1000;
+    pointer-events: none;
+    white-space: nowrap;
+    letter-spacing: 0.06em;
+    backdrop-filter: blur(4px);
   }
 }

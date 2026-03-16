@@ -63,22 +63,13 @@ const AQIRing = ({ aqi, category }) => {
       />
       <text
         x="100"
-        y="97"
+        y="100"
         textAnchor="middle"
         dominantBaseline="middle"
         className="aqi-gauge-number"
         style={{ fill: color }}
       >
         {aqi}
-      </text>
-      <text
-        x="100"
-        y="126"
-        textAnchor="middle"
-        dominantBaseline="middle"
-        className="aqi-gauge-label"
-      >
-        {category}
       </text>
     </svg>
   );
@@ -179,13 +170,13 @@ const Dashboard = () => {
       // ── Brand name ──
       doc.setFont("helvetica", "bold");
       doc.setFontSize(22);
-      doc.setTextColor(5, 120, 85); // deep green
+      doc.setTextColor(5, 120, 85);
       doc.text(`EcoStride`, 20, 16);
 
       // ── Report title ──
       doc.setFont("helvetica", "normal");
       doc.setFontSize(11);
-      doc.setTextColor(30, 60, 50); // dark green-grey
+      doc.setTextColor(30, 60, 50);
       doc.text(`Status Report — ${location.city}`, 20, 25);
 
       // ── Timestamp ──
@@ -230,22 +221,22 @@ const Dashboard = () => {
         startY: 90,
         theme: "grid",
         headStyles: {
-          fillColor: [5, 150, 105], // green header
-          textColor: [255, 255, 255], // white text
+          fillColor: [5, 150, 105],
+          textColor: [255, 255, 255],
           fontStyle: "bold",
           fontSize: 10,
           lineColor: [5, 120, 85],
           lineWidth: 0.3,
         },
         bodyStyles: {
-          fillColor: [255, 255, 255], // white rows
-          textColor: [30, 40, 35], // near-black text
+          fillColor: [255, 255, 255],
+          textColor: [30, 40, 35],
           fontSize: 9.5,
-          lineColor: [210, 230, 220], // light green border
+          lineColor: [210, 230, 220],
           lineWidth: 0.2,
         },
         alternateRowStyles: {
-          fillColor: [240, 253, 247], // very light mint
+          fillColor: [240, 253, 247],
         },
         columnStyles: {
           0: { fontStyle: "bold", textColor: [40, 90, 70] },
@@ -298,9 +289,25 @@ const Dashboard = () => {
 
       {/* ── Main grid: gauge + map ── */}
       <div className="dash-main">
-        {/* Left: AQI ring gauge */}
-        <div className="card aqi-gauge-wrap">
-          <AQIRing aqi={aqi} category={category} />
+        {/* Left: AQI ring gauge — FIXED card container */}
+        <div
+          className="card aqi-gauge-wrap"
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "10px",
+            padding: "1.25rem",
+            overflow: "hidden",
+            boxSizing: "border-box",
+          }}
+        >
+          {/* Constrained SVG wrapper */}
+          <div style={{ width: "100%", maxWidth: "220px" }}>
+            <AQIRing aqi={aqi} category={category} />
+          </div>
+
+          {/* Category badge — full width, wraps long text */}
           <div
             className="badge"
             style={{
@@ -308,21 +315,45 @@ const Dashboard = () => {
               color: aqiColor,
               border: `1px solid ${aqiColor}30`,
               marginTop: 4,
+              width: "100%",
+              textAlign: "center",
+              whiteSpace: "normal",
+              wordBreak: "break-word",
+              padding: "6px 10px",
+              borderRadius: "8px",
+              fontSize: "0.78rem",
+              fontWeight: 600,
             }}
           >
             {category}
           </div>
-          <div className="aqi-source-badge">
+
+          {/* Source / distance / accuracy — contained */}
+          <div
+            className="aqi-source-badge"
+            style={{
+              width: "100%",
+              textAlign: "center",
+              fontSize: "0.72rem",
+              color: "var(--text-muted)",
+              fontFamily: "var(--font-mono)",
+              lineHeight: 1.6,
+              wordBreak: "break-word",
+              padding: "4px 0",
+            }}
+          >
             {data?.source || "sensor"}
             <br />
             dist {data?.distance_km ?? "—"} km · {data?.accuracy_level || ""}
           </div>
+
+          {/* Heatmap toggle — full width */}
           <button
             className={heatmapMode ? "btn-primary" : "btn-ghost"}
             onClick={() => setHeatmapMode(!heatmapMode)}
             style={{
               width: "100%",
-              marginTop: 10,
+              marginTop: 6,
               fontSize: "0.75rem",
               padding: "7px",
               display: "flex",
