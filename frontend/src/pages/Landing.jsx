@@ -1,20 +1,26 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { signInWithGoogle as firebaseGoogleSignIn } from '../utils/firebase';
-import { LogIn, Loader } from 'lucide-react';
-import '../styles/Landing.css';
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { signInWithGoogle as firebaseGoogleSignIn } from "../utils/firebase";
+import { LogIn, Loader } from "lucide-react";
+import ThemeToggle from "../components/ThemeToggle";
+import "../styles/Landing.css";
+import { Link } from "react-router-dom";
 
 const Landing = () => {
   const navigate = useNavigate();
-  const { signInWithGoogle: backendSignIn, isAuthenticated, loading: authLoading } = useAuth();
+  const {
+    signInWithGoogle: backendSignIn,
+    isAuthenticated,
+    loading: authLoading,
+  } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated && !authLoading) {
-      navigate('/dashboard', { replace: true });
+      navigate("/dashboard", { replace: true });
     }
   }, [isAuthenticated, authLoading, navigate]);
 
@@ -32,12 +38,15 @@ const Landing = () => {
       }
 
       // Step 2: Send token + firebase user to backend auth context
-      const backendResult = await backendSignIn(googleResult.idToken, googleResult.user);
+      const backendResult = await backendSignIn(
+        googleResult.idToken,
+        googleResult.user
+      );
 
       if (!backendResult.success) {
         if (backendResult.blocked) {
           // Redirect immediately to blocked page
-          navigate('/account-blocked', { replace: true });
+          navigate("/account-blocked", { replace: true });
           return;
         }
         setError(backendResult.error);
@@ -46,13 +55,13 @@ const Landing = () => {
 
       // Step 3: Check if user is new
       if (backendResult.isNewUser) {
-        navigate('/profile-setup', { replace: true });
+        navigate("/profile-setup", { replace: true });
       } else {
-        navigate('/dashboard', { replace: true });
+        navigate("/dashboard", { replace: true });
       }
     } catch (err) {
-      setError(err.message || 'An error occurred during sign in');
-      console.error('Sign in error:', err);
+      setError(err.message || "An error occurred during sign in");
+      console.error("Sign in error:", err);
     } finally {
       setLoading(false);
     }
@@ -61,11 +70,13 @@ const Landing = () => {
   return (
     <div className="landing-container">
       <div className="landing-content">
-        {/* Header */}
         <div className="landing-header">
-          <div className="logo">
-            <span className="logo-icon">🌍</span>
-            <h1>EcoStride</h1>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div className="logo" style={{ marginBottom: 0 }}>
+              <span className="logo-icon">🌍</span>
+              <h1>EcoStride</h1>
+            </div>
+            <ThemeToggle />
           </div>
           <p className="tagline">Your Guide to Cleaner Air & Safer Routes</p>
         </div>
@@ -75,8 +86,9 @@ const Landing = () => {
           <div className="features-section">
             <h2>Welcome to EcoStride</h2>
             <p className="intro-text">
-              Make informed decisions about your routes based on real-time air quality data.
-              Get personalized health advisories and find the safest paths for your daily commute.
+              Make informed decisions about your routes based on real-time air
+              quality data. Get personalized health advisories and find the
+              safest paths for your daily commute.
             </p>
 
             <div className="features-grid">
@@ -101,7 +113,9 @@ const Landing = () => {
               <div className="feature-card">
                 <div className="feature-icon">🏘️</div>
                 <h3>Community Safe Zones</h3>
-                <p>Discover low-pollution areas recommended by your community</p>
+                <p>
+                  Discover low-pollution areas recommended by your community
+                </p>
               </div>
             </div>
           </div>
@@ -160,7 +174,12 @@ const Landing = () => {
               </button>
 
               <p className="signin-note">
-                Sign in to access personalized health recommendations and save your preferences.
+                Sign in to access personalized health recommendations and save
+                your preferences.
+              </p>
+              <br />
+              <p className="signin-note">
+                <Link to="/admin-login">Admin-Login</Link>
               </p>
             </div>
           </div>
@@ -169,11 +188,11 @@ const Landing = () => {
         {/* Footer */}
         <div className="landing-footer">
           <p>
-            By signing in, you agree to our{' '}
+            By signing in, you agree to our{" "}
             <a href="#" className="footer-link">
               Terms of Service
-            </a>{' '}
-            and{' '}
+            </a>{" "}
+            and{" "}
             <a href="#" className="footer-link">
               Privacy Policy
             </a>

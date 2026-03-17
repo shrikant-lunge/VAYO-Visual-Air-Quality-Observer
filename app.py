@@ -7,7 +7,26 @@ import os
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
 app = Flask(__name__)
-CORS(app)
+
+# Configure CORS explicitly for both localhost and 127.0.0.1
+CORS(app, 
+     resources={
+         r"/api/*": {
+             "origins": [
+                 "http://localhost:5173",
+                 "http://localhost:3000",
+                 "http://127.0.0.1:5173",
+                 "http://127.0.0.1:3000",
+                 "http://localhost:5000",
+                 "http://127.0.0.1:5000",
+             ],
+             "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+             "allow_headers": ["Content-Type", "Authorization"],
+             "supports_credentials": True,
+             "max_age": 3600
+         }
+     }
+)
 
 from models.forecasting import AQIForecaster
 from models.routing import RoutePlanner
@@ -891,8 +910,206 @@ def test_broadcast_email():
         print(f"Test broadcast email error: {e}")
         return jsonify({
             "status": "error",
-            "message": str(e)
-        }), 500
+            "message": str(e)}
+        ), 500
+
+
+# ─── Community Message API Endpoints ────────────────────────────────────────
+
+@app.route('/api/community/messages', methods=['GET'])
+def get_community_messages():
+    """Fetch all active (non-expired) community messages"""
+    try:
+        from services.community_message import CommunityMessageService
+        service = CommunityMessageService()
+        messages = service.get_active_messages()
+        return jsonify({"status": "success", "messages": messages}), 200
+    except Exception as e:
+        print(f"Error fetching community messages: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route('/api/admin/community/message', methods=['POST'])
+def create_community_message():
+    """Create and publish a new community message (admin only)"""
+    try:
+        from services.community_message import CommunityMessageService
+        
+        data = request.json or {}
+        title = data.get('title', '')
+        content = data.get('content', '')
+        expires_at = data.get('expiresAt', '')
+        
+        if not title or not content or not expires_at:
+            return jsonify({"status": "error", "message": "title, content, and expiresAt are required"}), 400
+        
+        service = CommunityMessageService()
+        success, result = service.create_message(title, content, expires_at)
+        
+        if success:
+            return jsonify({"status": "success", **result}), 201
+        else:
+            return jsonify({"status": "error", **result}), 500
+    except Exception as e:
+        print(f"Error creating community message: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route('/api/admin/community/message/<message_id>', methods=['PUT'])
+def update_community_message(message_id):
+    """Update an existing community message (admin only)"""
+    try:
+        from services.community_message import CommunityMessageService
+        
+        data = request.json or {}
+        title = data.get('title', '')
+        content = data.get('content', '')
+        expires_at = data.get('expiresAt', '')
+        
+        if not title or not content or not expires_at:
+            return jsonify({"status": "error", "message": "title, content, and expiresAt are required"}), 400
+        
+        service = CommunityMessageService()
+        success, result = service.update_message(message_id, title, content, expires_at)
+        
+        if success:
+            return jsonify({"status": "success", **result}), 200
+        else:
+            return jsonify({"status": "error", **result}), 500
+    except Exception as e:
+        print(f"Error updating community message: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route('/api/admin/community/message/<message_id>', methods=['DELETE'])
+def delete_community_message(message_id):
+    """Delete a community message (admin only)"""
+    try:
+        from services.community_message import CommunityMessageService
+        service = CommunityMessageService()
+        success, result = service.delete_message(message_id)
+        
+        if success:
+            return jsonify({"status": "success", **result}), 200
+        else:
+            return jsonify({"status": "error", **result}), 500
+    except Exception as e:
+        print(f"Error deleting community message: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+# ─── Reports Management API Endpoints ───────────────────────────────────────
+
+@app.route('/api/admin/reports', methods=['GET'])
+def get_admin_reports():
+    """Fetch all reports with optional filtering (admin only)"""
+    try:
+        from services.reports_management import ReportsManagementService
+        
+        # Optional filter by status: 'resolved', 'unresolved', or None for all
+        status_filter = request.args.get('status', None)
+        
+        service = ReportsManagementService()
+        reports = service.get_all_reports(filter_status=status_filter)
+        
+        return jsonify({"status": "success", "reports": reports}), 200
+    except Exception as e:
+        print(f"Error fetching reports: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route('/api/admin/reports/stats', methods=['GET'])
+def get_reports_stats():
+    """Get statistics about all reports (admin only)"""
+    try:
+        from services.reports_management import ReportsManagementService
+        
+        service = ReportsManagementService()
+        stats = service.get_report_stats()
+        
+        return jsonify({"status": "success", "stats": stats}), 200
+    except Exception as e:
+        print(f"Error getting report stats: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route('/api/admin/reports/<report_id>/resolve', methods=['POST'])
+def resolve_report(report_id):
+    """Mark a report as resolved (admin only)"""
+    try:
+        from services.reports_management import ReportsManagementService
+        
+        service = ReportsManagementService()
+        success, result = service.mark_resolved(report_id)
+        
+        if success:
+            return jsonify({"status": "success", **result}), 200
+        else:
+            return jsonify({"status": "error", **result}), 500
+    except Exception as e:
+        print(f"Error resolving report: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route('/api/admin/reports/<report_id>/unresolve', methods=['POST'])
+def unresolve_report(report_id):
+    """Mark a report as unresolved (admin only)"""
+    try:
+        from services.reports_management import ReportsManagementService
+        
+        service = ReportsManagementService()
+        success, result = service.mark_unresolved(report_id)
+        
+        if success:
+            return jsonify({"status": "success", **result}), 200
+        else:
+            return jsonify({"status": "error", **result}), 500
+    except Exception as e:
+        print(f"Error unresolving report: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route('/api/admin/reports/<report_id>/comment', methods=['POST'])
+def add_report_comment(report_id):
+    """Add an admin comment to a report (admin only)"""
+    try:
+        from services.reports_management import ReportsManagementService
+        
+        data = request.json or {}
+        admin_email = data.get('adminEmail', '')
+        comment = data.get('comment', '')
+        
+        if not admin_email or not comment:
+            return jsonify({"status": "error", "message": "adminEmail and comment are required"}), 400
+        
+        service = ReportsManagementService()
+        success, result = service.add_admin_comment(report_id, admin_email, comment)
+        
+        if success:
+            return jsonify({"status": "success", **result}), 201
+        else:
+            return jsonify({"status": "error", **result}), 500
+    except Exception as e:
+        print(f"Error adding comment: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route('/api/admin/reports/<report_id>', methods=['DELETE'])
+def delete_admin_report(report_id):
+    """Delete a report (admin only)"""
+    try:
+        from services.reports_management import ReportsManagementService
+        
+        service = ReportsManagementService()
+        success, result = service.delete_report(report_id)
+        
+        if success:
+            return jsonify({"status": "success", **result}), 200
+        else:
+            return jsonify({"status": "error", **result}), 500
+    except Exception as e:
+        print(f"Error deleting report: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 
 if __name__ == '__main__':

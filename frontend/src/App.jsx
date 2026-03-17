@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
 import ProtectedRoute from './components/ProtectedRoute';
 
 // Pages
@@ -17,12 +18,15 @@ import Community from './pages/Community';
 import AdminLogin from './pages/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminProtectedRoute from './components/AdminProtectedRoute';
+import CommunityMessageAdmin from './pages/CommunityMessageAdmin';
+import CommunityReportsAdmin from './pages/CommunityReportsAdmin';
 import AccountBlocked from './pages/AccountBlocked';
 
 function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
+    <ThemeProvider>
+      <BrowserRouter>
+        <AuthProvider>
         <Routes>
           {/* Public Routes */}
           <Route path="/login" element={<Landing />} />
@@ -59,9 +63,26 @@ function App() {
               </AdminProtectedRoute>
             }
           />
+          <Route
+            path="/admin/messages"
+            element={
+              <AdminProtectedRoute>
+                <CommunityMessageAdmin />
+              </AdminProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/reports"
+            element={
+              <AdminProtectedRoute>
+                <CommunityReportsAdmin />
+              </AdminProtectedRoute>
+            }
+          />
         </Routes>
       </AuthProvider>
     </BrowserRouter>
+  </ThemeProvider>
   );
 }
 

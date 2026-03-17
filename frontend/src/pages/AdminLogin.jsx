@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getAdmins } from '../utils/firebase';
 import { Loader, ShieldCheck, AlertTriangle } from 'lucide-react';
+import ThemeToggle from '../components/ThemeToggle';
 import '../styles/AdminDashboard.css';
 
 const AdminLogin = () => {
@@ -137,6 +138,10 @@ const AdminLogin = () => {
             )}
           </button>
         </form>
+      </div>
+      
+      <div style={{ position: 'absolute', top: 24, right: 24 }}>
+        <ThemeToggle />
       </div>
     </div>
   );

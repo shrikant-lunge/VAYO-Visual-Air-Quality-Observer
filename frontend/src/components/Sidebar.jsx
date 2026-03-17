@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import axios from "axios";
 import { API_BASE_URL } from "../apiConfig";
+import ThemeToggle from "./ThemeToggle";
 
 const NAV_ITEMS = [
   { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard", sub: "Live AQI" },
@@ -144,6 +145,10 @@ const Sidebar = () => {
                   <LogOut size={16} />
                   <span>Sign Out</span>
                 </button>
+                <div className="user-dropdown-divider"></div>
+                <div style={{ padding: "8px 12px", display: "flex", justifyContent: "center" }}>
+                  <ThemeToggle style={{ width: "100%", padding: "6px" }} />
+                </div>
               </div>
             )}
           </div>

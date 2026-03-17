@@ -12,6 +12,8 @@ from datetime import datetime
 # Initialize Firebase Admin SDK
 def initialize_firebase():
     """Initialize Firebase Admin SDK"""
+    from config import FIREBASE_DATABASE_URL
+    
     # Try to get credentials from environment variable first
     firebase_credentials = os.getenv('FIREBASE_CREDENTIALS')
     
@@ -28,13 +30,15 @@ def initialize_firebase():
             "Please set FIREBASE_CREDENTIALS environment variable or provide eco-stride2026.json"
         )
     
-    # Get database URL from environment
-    database_url = os.getenv('FIREBASE_DATABASE_URL')
-    if not database_url:
-        raise ValueError("FIREBASE_DATABASE_URL environment variable not set")
+    # Use database URL from config
+    if not FIREBASE_DATABASE_URL:
+        raise ValueError(
+            "FIREBASE_DATABASE_URL not configured. "
+            "Set it in config.py or via FIREBASE_DATABASE_URL environment variable"
+        )
     
     firebase_admin.initialize_app(cred, {
-        'databaseURL': database_url
+        'databaseURL': FIREBASE_DATABASE_URL
     })
 
 def verify_google_token(id_token):

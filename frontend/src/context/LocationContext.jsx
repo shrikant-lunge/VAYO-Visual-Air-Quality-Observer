@@ -192,4 +192,3 @@ export const LocationProvider = ({ children }) => {
     </LocationContext.Provider>
   );
 };
-

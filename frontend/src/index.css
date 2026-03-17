@@ -32,6 +32,34 @@
   --font-mono: "DM Mono", monospace;
 }
 
+[data-theme="light"] {
+  --bg-base: #f4f6f8;
+  --bg-surface: #ffffff;
+  --bg-card: #ffffff;
+  --border: rgba(0, 0, 0, 0.1);
+  --accent: #00b37e;
+  --accent-dim: rgba(0, 179, 126, 0.12);
+  --accent-glow: rgba(0, 179, 126, 0.25);
+  --text-primary: #1a202c;
+  --text-secondary: #4a5568;
+  --text-muted: #718096;
+
+  /* AQI colours */
+  --aqi-good: #00b37e;
+  --aqi-moderate: #d99f00;
+  --aqi-sensitive: #e06c10;
+  --aqi-unhealthy: #e51c40;
+
+  /* Legacy compat (keep so other pages don't break) */
+  --bg-primary: #f4f6f8;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #f8fafc;
+  --bg-glass: rgba(0, 0, 0, 0.04);
+  --accent-cyan: #00b37e;
+  --border-subtle: rgba(0, 0, 0, 0.06);
+  --border-glow: rgba(0, 179, 126, 0.3);
+}
+
 * {
   margin: 0;
   padding: 0;

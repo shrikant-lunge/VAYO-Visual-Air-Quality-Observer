@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 import { API_BASE_URL } from '../apiConfig';
+import ThemeToggle from '../components/ThemeToggle';
 import '../styles/AdminDashboard.css';
 
 /* ── helpers ─────────────────────────────────────── */
@@ -281,6 +282,23 @@ const AdminDashboard = () => {
           </div>
         </div>
         <div className="admin-header-actions">
+          <ThemeToggle />
+          <button
+            className="admin-logout-btn"
+            onClick={() => navigate('/admin/reports')}
+            title="Manage Community Reports"
+            style={{ gap: '6px', borderColor: 'rgba(239, 68, 68, 0.8)', color: '#ef4444' }}
+          >
+            Moderate Reports
+          </button>
+          <button
+            className="admin-logout-btn"
+            onClick={() => navigate('/admin/messages')}
+            title="Manage Community Messages"
+            style={{ gap: '6px', borderColor: 'var(--accent)', color: 'var(--accent)' }}
+          >
+            Moderate Messages
+          </button>
           <button
             className="admin-logout-btn"
             onClick={fetchUsers}
