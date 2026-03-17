@@ -36,3 +36,8 @@ python-dotenv
 # Firebase
 firebase-admin
 
+# Email Service
+# For SMTP email sending (built-in, no install needed: smtplib)
+# But we'll use optional dependencies for better email handling:
+email-validator
+

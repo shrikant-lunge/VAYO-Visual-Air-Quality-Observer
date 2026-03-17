@@ -188,4 +188,18 @@ export const getAllUsers = async () => {
   }
 };
 
+/**
+ * Fetch a single user by UID
+ */
+export const getUserByUid = async (uid) => {
+  try {
+    const userRef = ref(database, `users/${uid}`);
+    const snapshot = await get(userRef);
+    return snapshot.exists() ? snapshot.val() : null;
+  } catch (error) {
+    console.error("Error fetching user by uid:", error);
+    return null;
+  }
+};
+
 export default app;

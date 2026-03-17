@@ -17,6 +17,7 @@ import Community from './pages/Community';
 import AdminLogin from './pages/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminProtectedRoute from './components/AdminProtectedRoute';
+import AccountBlocked from './pages/AccountBlocked';
 
 function App() {
   return (
@@ -26,6 +27,7 @@ function App() {
           {/* Public Routes */}
           <Route path="/login" element={<Landing />} />
           <Route path="/" element={<Landing />} />
+          <Route path="/account-blocked" element={<AccountBlocked />} />
 
           {/* Auth Protected Routes */}
           <Route path="/profile-setup" element={<ProtectedRoute element={<ProfileSetup />} />} />

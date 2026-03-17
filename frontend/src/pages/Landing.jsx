@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { signInWithGoogle } from '../utils/firebase';
+import { signInWithGoogle as firebaseGoogleSignIn } from '../utils/firebase';
 import { LogIn, Loader } from 'lucide-react';
 import '../styles/Landing.css';
 
 const Landing = () => {
   const navigate = useNavigate();
-  const { signInWithGoogle: backendSignIn, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { signInWithGoogle: backendSignIn, isAuthenticated, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -24,27 +24,30 @@ const Landing = () => {
       setLoading(true);
 
       // Step 1: Firebase Google Sign-in
-      const googleResult = await signInWithGoogle();
+      const googleResult = await firebaseGoogleSignIn();
 
       if (!googleResult.success) {
         setError(googleResult.error);
         return;
       }
 
-      // Step 2: Send token to backend and signin
-      const backendResult = await backendSignIn(googleResult.idToken);
+      // Step 2: Send token + firebase user to backend auth context
+      const backendResult = await backendSignIn(googleResult.idToken, googleResult.user);
 
       if (!backendResult.success) {
+        if (backendResult.blocked) {
+          // Redirect immediately to blocked page
+          navigate('/account-blocked', { replace: true });
+          return;
+        }
         setError(backendResult.error);
         return;
       }
 
       // Step 3: Check if user is new
       if (backendResult.isNewUser) {
-        // Redirect to profile setup
         navigate('/profile-setup', { replace: true });
       } else {
-        // Redirect to dashboard
         navigate('/dashboard', { replace: true });
       }
     } catch (err) {

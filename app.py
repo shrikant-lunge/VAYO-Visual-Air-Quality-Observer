@@ -728,6 +728,173 @@ def admin_delete_user(uid):
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
+# ─── Emergency Broadcast Email API Endpoints ──────────────────────────────────
+
+@app.route('/api/admin/broadcast/preview', methods=['POST'])
+def preview_broadcast_email():
+    """
+    Generate a preview of the broadcast email with HTML rendering.
+    Expected JSON: {
+        "title": "Emergency Alert",
+        "message": "System maintenance..."
+    }
+    """
+    try:
+        from services.broadcast_email import EmergencyBroadcastService
+        
+        data = request.json or {}
+        title = data.get('title', '')
+        message = data.get('message', '')
+        
+        if not title or not message:
+            return jsonify({
+                "status": "error",
+                "message": "title and message are required"
+            }), 400
+        
+        service = EmergencyBroadcastService()
+        html_preview = service.create_email_html(title, message)
+        
+        return jsonify({
+            "status": "success",
+            "preview": html_preview
+        }), 200
+    
+    except ValueError as e:
+        # SMTP credentials not configured
+        return jsonify({
+            "status": "error",
+            "message": f"Broadcast email not configured: {str(e)}"
+        }), 500
+    except Exception as e:
+        print(f"Preview broadcast email error: {e}")
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+
+@app.route('/api/admin/broadcast/send', methods=['POST'])
+def send_broadcast_email():
+    """
+    Send emergency broadcast email to all registered users.
+    Expected JSON: {
+        "title": "Emergency Alert",
+        "message": "System maintenance scheduled...",
+        "cc_emails": ["optional@email.com"],  // optional
+        "bcc_emails": ["optional@email.com"]  // optional
+    }
+    """
+    try:
+        from services.broadcast_email import EmergencyBroadcastService
+        
+        data = request.json or {}
+        title = data.get('title', '')
+        message = data.get('message', '')
+        cc_emails = data.get('cc_emails', [])
+        bcc_emails = data.get('bcc_emails', [])
+        
+        if not title or not message:
+            return jsonify({
+                "status": "error",
+                "message": "title and message are required"
+            }), 400
+        
+        # Validate email lists
+        cc_emails = cc_emails if isinstance(cc_emails, list) else []
+        bcc_emails = bcc_emails if isinstance(bcc_emails, list) else []
+        
+        service = EmergencyBroadcastService()
+        success, stats = service.send_broadcast_email(
+            title=title,
+            message=message,
+            cc_emails=cc_emails,
+            bcc_emails=bcc_emails
+        )
+        
+        response = {
+            "status": "success" if success else "partial",
+            "stats": {
+                "total": stats.get('total', 0),
+                "sent": stats.get('sent', 0),
+                "failed": stats.get('failed', 0)
+            }
+        }
+        
+        # Include errors if any
+        if stats.get('errors'):
+            response['errors'] = stats['errors'][:10]  # Limit to first 10 errors
+            response['error_count'] = len(stats.get('errors', []))
+        
+        http_status = 200 if success else (206 if stats.get('sent', 0) > 0 else 500)
+        return jsonify(response), http_status
+    
+    except ValueError as e:
+        # SMTP credentials not configured
+        return jsonify({
+            "status": "error",
+            "message": f"Broadcast email not configured: {str(e)}"
+        }), 500
+    except Exception as e:
+        print(f"Send broadcast email error: {e}")
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+
+@app.route('/api/admin/broadcast/test', methods=['POST'])
+def test_broadcast_email():
+    """
+    Send a test broadcast email to a specific address.
+    Expected JSON: {
+        "test_email": "test@example.com",
+        "title": "Test Email",
+        "message": "This is a test message"
+    }
+    """
+    try:
+        from services.broadcast_email import EmergencyBroadcastService
+        
+        data = request.json or {}
+        test_email = data.get('test_email', '')
+        title = data.get('title', 'Test Email')
+        message = data.get('message', 'This is a test broadcast email.')
+        
+        if not test_email:
+            return jsonify({
+                "status": "error",
+                "message": "test_email is required"
+            }), 400
+        
+        service = EmergencyBroadcastService()
+        success, stats = service.send_bulk_email(
+            recipient_emails=[test_email],
+            title=title,
+            message=message
+        )
+        
+        return jsonify({
+            "status": "success" if success else "error",
+            "message": "Test email sent successfully" if success else "Failed to send test email",
+            "sent": stats.get('sent', 0),
+            "failed": stats.get('failed', 0),
+            "errors": stats.get('errors', [])
+        }), (200 if success else 500)
+    
+    except ValueError as e:
+        return jsonify({
+            "status": "error",
+            "message": f"Broadcast email not configured: {str(e)}"
+        }), 500
+    except Exception as e:
+        print(f"Test broadcast email error: {e}")
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+
 if __name__ == '__main__':
     from config import PORT, HOST, DEBUG
     print(f"Starting Team-X project on http://{HOST}:{PORT}")

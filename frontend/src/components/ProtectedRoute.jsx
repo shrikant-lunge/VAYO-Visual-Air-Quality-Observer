@@ -10,7 +10,7 @@ import { useAuth } from '../context/AuthContext';
  * If authenticated and profile complete: renders the component
  */
 export function ProtectedRoute({ element, requireProfileComplete = false }) {
-  const { isAuthenticated, isProfileComplete, loading } = useAuth();
+  const { isAuthenticated, isProfileComplete, loading, isBlocked } = useAuth();
 
   if (loading) {
     return (
@@ -23,6 +23,11 @@ export function ProtectedRoute({ element, requireProfileComplete = false }) {
         </div>
       </div>
     );
+  }
+
+  // If user is blocked, always redirect to blocked screen
+  if (isBlocked) {
+    return <Navigate to="/account-blocked" replace />;
   }
 
   if (!isAuthenticated) {

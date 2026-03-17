@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Users, ShieldOff, ShieldCheck, Trash2, LogOut,
   Search, RefreshCw, AlertTriangle, Loader, CheckCircle,
+  Mail, Eye, Send, AlertCircle, CheckCircle2,
 } from 'lucide-react';
 import axios from 'axios';
 import { API_BASE_URL } from '../apiConfig';
@@ -34,6 +35,19 @@ const AdminDashboard = () => {
 
   // Toast
   const [toast, setToast]             = useState(null); // { type: 'success'|'error', msg }
+
+  // Broadcast Email State
+  const [showBroadcastModal, setShowBroadcastModal] = useState(false);
+  const [broadcastTitle, setBroadcastTitle] = useState('');
+  const [broadcastMessage, setBroadcastMessage] = useState('');
+  const [broadcastCCEmails, setBroadcastCCEmails] = useState('');
+  const [broadcastBCCEmails, setBroadcastBCCEmails] = useState('');
+  const [broadcastLoading, setBroadcastLoading] = useState(false);
+  const [broadcastPreview, setBroadcastPreview] = useState(null);
+  const [showPreview, setShowPreview] = useState(false);
+  const [broadcastStats, setBroadcastStats] = useState(null);
+  const [testEmail, setTestEmail] = useState('');
+  const [testSending, setTestSending] = useState(false);
 
   const session = getSession();
 
@@ -131,6 +145,116 @@ const AdminDashboard = () => {
       showToast('error', 'Failed to delete user.');
     } finally {
       setDeleting(false);
+    }
+  };
+
+  /* ── Broadcast Email Functions ─────────────────── */
+  const handleGeneratePreview = async () => {
+    if (!broadcastTitle.trim() || !broadcastMessage.trim()) {
+      showToast('error', 'Title and message are required');
+      return;
+    }
+
+    setBroadcastLoading(true);
+    try {
+      const resp = await axios.post(`${API_BASE_URL}/api/admin/broadcast/preview`, {
+        title: broadcastTitle,
+        message: broadcastMessage,
+      });
+
+      if (resp.data.status === 'success') {
+        setBroadcastPreview(resp.data.preview);
+        setShowPreview(true);
+      }
+    } catch (err) {
+      showToast('error', 'Failed to generate preview');
+      console.error('Preview error:', err);
+    } finally {
+      setBroadcastLoading(false);
+    }
+  };
+
+  const handleSendTestEmail = async () => {
+    if (!testEmail.trim()) {
+      showToast('error', 'Test email address is required');
+      return;
+    }
+
+    setTestSending(true);
+    try {
+      const resp = await axios.post(`${API_BASE_URL}/api/admin/broadcast/test`, {
+        test_email: testEmail,
+        title: broadcastTitle || 'Test Email',
+        message: broadcastMessage || 'This is a test message',
+      });
+
+      if (resp.data.status === 'success' || resp.data.message === 'Test email sent successfully') {
+        showToast('success', `Test email sent to ${testEmail}`);
+        setTestEmail('');
+      } else {
+        showToast('error', resp.data.message || 'Failed to send test email');
+      }
+    } catch (err) {
+      showToast('error', 'Failed to send test email');
+      console.error('Test email error:', err);
+    } finally {
+      setTestSending(false);
+    }
+  };
+
+  const handleSendBroadcast = async () => {
+    if (!broadcastTitle.trim() || !broadcastMessage.trim()) {
+      showToast('error', 'Title and message are required');
+      return;
+    }
+
+    // Confirm before sending
+    if (!window.confirm(`Send broadcast email to all ${users.length} users? This action cannot be undone.`)) {
+      return;
+    }
+
+    setBroadcastLoading(true);
+    try {
+      // Parse CC and BCC emails
+      const ccEmails = broadcastCCEmails
+        .split(',')
+        .map(e => e.trim())
+        .filter(e => e.length > 0);
+      
+      const bccEmails = broadcastBCCEmails
+        .split(',')
+        .map(e => e.trim())
+        .filter(e => e.length > 0);
+
+      const resp = await axios.post(`${API_BASE_URL}/api/admin/broadcast/send`, {
+        title: broadcastTitle,
+        message: broadcastMessage,
+        cc_emails: ccEmails,
+        bcc_emails: bccEmails,
+      });
+
+      if (resp.data.status === 'success' || resp.data.status === 'partial') {
+        setBroadcastStats(resp.data.stats);
+        showToast('success', `Emails sent: ${resp.data.stats.sent}/${resp.data.stats.total}`);
+        
+        // Reset form
+        setBroadcastTitle('');
+        setBroadcastMessage('');
+        setBroadcastCCEmails('');
+        setBroadcastBCCEmails('');
+        setShowPreview(false);
+        setBroadcastPreview(null);
+        
+        // Close modal after 2 seconds
+        setTimeout(() => setShowBroadcastModal(false), 2000);
+      } else {
+        showToast('error', resp.data.message || 'Failed to send broadcast');
+      }
+    } catch (err) {
+      showToast('error', 'Failed to send broadcast email');
+      console.error('Broadcast error:', err);
+    } finally {
+      setBroadcastLoading(false);
     }
   };
 
@@ -394,6 +518,224 @@ const AdminDashboard = () => {
           {toast.msg}
         </div>
       )}
+
+      {/* ── Broadcast Email Modal ────────────────── */}
+      {showBroadcastModal && (
+        <div className="broadcast-modal-overlay" onClick={(e) => {
+          if (e.target.classList.contains('broadcast-modal-overlay')) setShowBroadcastModal(false);
+        }}>
+          <div className="broadcast-modal">
+            <div className="broadcast-modal-header">
+              <div className="broadcast-modal-title">
+                <Mail size={18} />
+                Emergency Broadcast Email
+              </div>
+              <button
+                className="broadcast-modal-close"
+                onClick={() => setShowBroadcastModal(false)}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="broadcast-modal-body">
+              {/* Email Title */}
+              <div className="broadcast-form-group">
+                <label className="broadcast-form-label">Email Title</label>
+                <input
+                  type="text"
+                  className="broadcast-form-input"
+                  placeholder="e.g., System Maintenance Alert"
+                  value={broadcastTitle}
+                  onChange={(e) => setBroadcastTitle(e.target.value)}
+                />
+              </div>
+
+              {/* Email Message */}
+              <div className="broadcast-form-group">
+                <label className="broadcast-form-label">Email Message</label>
+                <textarea
+                  className="broadcast-form-textarea"
+                  placeholder="Write your message here. You can use line breaks..."
+                  value={broadcastMessage}
+                  onChange={(e) => setBroadcastMessage(e.target.value)}
+                />
+                <div className="broadcast-form-hint">
+                  {broadcastMessage.length} characters
+                </div>
+              </div>
+
+              {/* CC/BCC Section */}
+              <div style={{ paddingTop: '8px', borderTop: '1px solid var(--border)' }}>
+                <div className="broadcast-section-title">Optional: CC & BCC</div>
+                <div className="broadcast-form-group">
+                  <label className="broadcast-form-label">CC Emails</label>
+                  <input
+                    type="text"
+                    className="broadcast-form-input"
+                    placeholder="Comma-separated: email1@example.com, email2@example.com"
+                    value={broadcastCCEmails}
+                    onChange={(e) => setBroadcastCCEmails(e.target.value)}
+                  />
+                </div>
+                <div className="broadcast-form-group">
+                  <label className="broadcast-form-label">BCC Emails</label>
+                  <input
+                    type="text"
+                    className="broadcast-form-input"
+                    placeholder="Comma-separated: email1@example.com, email2@example.com"
+                    value={broadcastBCCEmails}
+                    onChange={(e) => setBroadcastBCCEmails(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {/* Test Email Section */}
+              <div style={{ paddingTop: '8px', borderTop: '1px solid var(--border)' }}>
+                <div className="broadcast-section-title">Test Email</div>
+                <div className="broadcast-test-section">
+                  <input
+                    type="email"
+                    className="broadcast-test-input"
+                    placeholder="your@email.com"
+                    value={testEmail}
+                    onChange={(e) => setTestEmail(e.target.value)}
+                  />
+                  <button
+                    className="broadcast-test-btn"
+                    onClick={handleSendTestEmail}
+                    disabled={testSending || !testEmail.trim()}
+                  >
+                    {testSending ? (
+                      <>
+                        <Loader size={12} className="animate-spin" />
+                        Sending…
+                      </>
+                    ) : (
+                      <>
+                        <Send size={12} />
+                        Send Test
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="broadcast-button-group">
+                <button
+                  className="broadcast-preview-btn"
+                  onClick={handleGeneratePreview}
+                  disabled={broadcastLoading || !broadcastTitle.trim() || !broadcastMessage.trim()}
+                >
+                  <Eye size={14} />
+                  Preview
+                </button>
+                <button
+                  className="broadcast-send-btn"
+                  onClick={handleSendBroadcast}
+                  disabled={broadcastLoading || !broadcastTitle.trim() || !broadcastMessage.trim()}
+                >
+                  {broadcastLoading ? (
+                    <>
+                      <Loader size={14} className="animate-spin" />
+                      Sending…
+                    </>
+                  ) : (
+                    <>
+                      <Send size={14} />
+                      Send to All ({users.length})
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Stats Display */}
+              {broadcastStats && (
+                <div className="broadcast-stats-box">
+                  <div className="broadcast-stat success">
+                    <div className="broadcast-stat-value">{broadcastStats.sent}</div>
+                    <div className="broadcast-stat-label">Sent</div>
+                  </div>
+                  <div className="broadcast-stat">
+                    <div className="broadcast-stat-value">{broadcastStats.total}</div>
+                    <div className="broadcast-stat-label">Total</div>
+                  </div>
+                  <div className="broadcast-stat error">
+                    <div className="broadcast-stat-value">{broadcastStats.failed}</div>
+                    <div className="broadcast-stat-label">Failed</div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Email Preview Modal ────────────────── */}
+      {showPreview && broadcastPreview && (
+        <div className="broadcast-preview-modal-overlay" onClick={(e) => {
+          if (e.target.classList.contains('broadcast-preview-modal-overlay')) setShowPreview(false);
+        }}>
+          <div className="broadcast-preview-modal">
+            <div className="broadcast-preview-header">
+              <div className="broadcast-preview-title">Email Preview</div>
+              <button
+                className="broadcast-preview-close"
+                onClick={() => setShowPreview(false)}
+              >
+                ✕
+              </button>
+            </div>
+            <div className="broadcast-preview-content">
+              <div className="broadcast-preview-iframe-wrap">
+                <iframe
+                  className="broadcast-preview-iframe"
+                  srcDoc={broadcastPreview}
+                  title="Email Preview"
+                  height="500"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Broadcast Button in Header ────────── */}
+      <div style={{ position: 'fixed', bottom: '28px', left: '28px', zIndex: '8000' }}>
+        <button
+          onClick={() => setShowBroadcastModal(true)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '12px 18px',
+            background: 'var(--accent)',
+            color: '#080d0f',
+            border: 'none',
+            borderRadius: '10px',
+            fontFamily: 'var(--font-display)',
+            fontSize: '13px',
+            fontWeight: '800',
+            textTransform: 'uppercase',
+            letterSpacing: '0.06em',
+            cursor: 'pointer',
+            boxShadow: '0 6px 20px var(--accent-glow)',
+            transition: 'all 0.2s',
+          }}
+          onMouseEnter={(e) => {
+            e.target.style.opacity = '0.88';
+            e.target.style.transform = 'translateY(-2px)';
+          }}
+          onMouseLeave={(e) => {
+            e.target.style.opacity = '1';
+            e.target.style.transform = 'translateY(0)';
+          }}
+        >
+          <Mail size={16} />
+          Broadcast
+        </button>
+      </div>
     </div>
   );
 };
