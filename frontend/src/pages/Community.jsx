@@ -1,71 +1,136 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useLocation } from "../hooks/useLocation";
-
-import jsPDF from "jspdf";
 import { API_BASE_URL } from "../apiConfig";
+import jsPDF from "jspdf";
 
 const Community = () => {
   const { location } = useLocation();
   const [reports, setReports] = useState([]);
+  const [communityMessages, setCommunityMessages] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [messagesLoading, setMessagesLoading] = useState(true);
   const [form, setForm] = useState({ type: "fire", description: "" });
+  
+  // States for Community Message Form
+  const [showMessageForm, setShowMessageForm] = useState(false);
+  const [msgForm, setMsgForm] = useState({ title: "", content: "" });
+  const [msgLoading, setMsgLoading] = useState(false);
+
+  // Fetch community messages on mount
+  useEffect(() => {
+    fetchCommunityMessages();
+  }, []);
+
+  const fetchCommunityMessages = async () => {
+    setMessagesLoading(true);
+    try {
+      const resp = await axios.get(`${API_BASE_URL}/api/community/messages`);
+      if (resp.data.status === 'success') {
+        setCommunityMessages(resp.data.messages || []);
+      }
+    } catch (err) {
+      console.warn("Failed to fetch community messages:", err.message);
+      setCommunityMessages([]);
+    } finally {
+      setMessagesLoading(false);
+    }
+  };
+
+  const fetchReports = async () => {
+    try {
+      const resp = await axios.get(`${API_BASE_URL}/api/community/reports`);
+      if (resp.data.status === 'success') {
+        const allReports = resp.data.reports || [];
+        const cityReports = allReports.filter(r => r.city === location.city && r.status !== 'resolved');
+        
+        const valid = cityReports.filter(r => {
+          const rTime = new Date(r.timestamp).getTime();
+          return Date.now() - rTime < 4 * 60 * 60 * 1000;
+        });
+        setReports(valid);
+      }
+    } catch (err) {
+      console.warn("Failed to fetch community reports:", err.message);
+      // Fallback to local storage
+      const saved = JSON.parse(
+        localStorage.getItem(`reports_${location.city}`) || "[]",
+      );
+      const valid = saved.filter(r => {
+        const rTime = typeof r.timestamp === 'number' ? r.timestamp : new Date(r.timestamp).getTime();
+        return Date.now() - rTime < 4 * 60 * 60 * 1000;
+      });
+      setReports(valid);
+    }
+  };
 
   useEffect(() => {
-    const saved = JSON.parse(
-      localStorage.getItem(`reports_${location.city}`) || "[]",
-    );
-    const valid = saved.filter(
-      (r) => Date.now() - r.timestamp < 4 * 60 * 60 * 1000,
-    );
-    setReports(valid);
-    localStorage.setItem(`reports_${location.city}`, JSON.stringify(valid));
+    fetchReports();
   }, [location.city]);
+
+  const handleMsgSubmit = async (e) => {
+    e.preventDefault();
+    if (!msgForm.title.trim() || !msgForm.content.trim()) return;
+    setMsgLoading(true);
+    try {
+      // Auto-expire user messages in 48 hours
+      const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
+      await axios.post(`${API_BASE_URL}/api/community/message`, {
+        title: msgForm.title,
+        content: msgForm.content,
+        expiresAt: expiresAt
+      });
+      setMsgForm({ title: "", content: "" });
+      setShowMessageForm(false);
+      fetchCommunityMessages(); // Refresh messages immediately
+      alert("Message posted successfully!");
+    } catch (err) {
+      console.error("Failed to post message", err);
+      alert("Failed to post message. Please try again.");
+    } finally {
+      setMsgLoading(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
-      // Save locally first — works even if backend is unavailable
-      const newReport = {
-        id: Date.now(),
+      await axios.post(`${API_BASE_URL}/api/community/report`, {
         type: form.type,
         description: form.description,
-        timestamp: Date.now(),
+        city: location.city,
+        lat: location.lat,
+        lon: location.lon,
+      });
+
+      setForm({ type: "fire", description: "" });
+      alert("Report submitted! Authorities have been notified via email.");
+      fetchReports();
+    } catch (err) {
+      console.error("Reporting error", err);
+      // Fallback local save
+      const newReport = {
+        id: Date.now().toString(),
+        type: form.type,
+        description: form.description,
+        timestamp: new Date().toISOString(),
         lat: location.lat,
         lon: location.lon,
         notified: false,
+        city: location.city
       };
-
-      // Try backend — but don't block on failure
-      try {
-        await axios.post(`${API_BASE_URL}/api/community/report`, {
-          type: form.type,
-          description: form.description,
-          city: location.city,
-          lat: location.lat,
-          lon: location.lon,
-        });
-        newReport.notified = true;
-      } catch (backendErr) {
-        console.warn(
-          "Backend report failed, saved locally:",
-          backendErr.message,
-        );
-      }
-
-      const updated = [newReport, ...reports];
-      setReports(updated);
+      const saved = JSON.parse(localStorage.getItem(`reports_${location.city}`) || "[]");
+      const updated = [newReport, ...saved];
       localStorage.setItem(`reports_${location.city}`, JSON.stringify(updated));
+      
+      const valid = updated.filter(r => {
+        const rTime = typeof r.timestamp === 'number' ? r.timestamp : new Date(r.timestamp).getTime();
+        return Date.now() - rTime < 4 * 60 * 60 * 1000;
+      });
+      setReports(valid);
       setForm({ type: "fire", description: "" });
-      alert(
-        newReport.notified
-          ? "Report submitted! Authorities have been notified via email."
-          : "Report saved locally. Backend unavailable — authorities will be notified when connection is restored.",
-      );
-    } catch (err) {
-      console.error("Reporting error", err);
-      alert("Failed to submit report. Please try again.");
+      alert("Report saved locally. Backend unavailable — authorities will be notified when connection is restored.");
     } finally {
       setLoading(false);
     }
@@ -132,6 +197,132 @@ const Community = () => {
 
   return (
     <div className="grid grid-cols-12">
+      {/* ── Community Messages ── */}
+      <div className="col-span-12 card" style={{ marginBottom: "24px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+          <div>
+            <h2>📢 Community Announcements & Messages</h2>
+            <p className="text-muted" style={{ margin: 0 }}>
+              Important updates and community discussions.
+            </p>
+          </div>
+          <button 
+            className="btn-primary" 
+            onClick={() => setShowMessageForm(!showMessageForm)}
+            style={{ padding: "8px 16px", fontSize: "0.9rem" }}
+          >
+            {showMessageForm ? "Cancel" : "+ Post Message"}
+          </button>
+        </div>
+
+        {showMessageForm && (
+          <form 
+            onSubmit={handleMsgSubmit}
+            style={{ 
+              marginBottom: "24px", 
+              padding: "20px", 
+              background: "var(--bg-surface)", 
+              border: "1px solid var(--border)", 
+              borderRadius: "12px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "16px"
+            }}
+          >
+            <div>
+              <label style={{ display: "block", marginBottom: "8px", fontSize: "0.9rem", color: "var(--text-secondary)" }}>Title</label>
+              <input 
+                type="text" 
+                placeholder="E.g., Road Blockage on Main St"
+                value={msgForm.title}
+                onChange={e => setMsgForm({...msgForm, title: e.target.value})}
+                style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid var(--border)", background: "var(--bg-card)", color: "var(--text-primary)" }}
+                required
+              />
+            </div>
+            <div>
+              <label style={{ display: "block", marginBottom: "8px", fontSize: "0.9rem", color: "var(--text-secondary)" }}>Message</label>
+              <textarea 
+                rows="3" 
+                placeholder="Share more details with the community..."
+                value={msgForm.content}
+                onChange={e => setMsgForm({...msgForm, content: e.target.value})}
+                style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid var(--border)", background: "var(--bg-card)", color: "var(--text-primary)" }}
+                required
+              />
+            </div>
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>
+              <button type="submit" className="btn-primary" disabled={msgLoading}>
+                {msgLoading ? "Posting..." : "Post Message"}
+              </button>
+            </div>
+          </form>
+        )}
+
+        {messagesLoading ? (
+          <div style={{ padding: "24px", textAlign: "center" }}>
+            <div style={{
+              width: "32px",
+              height: "32px",
+              border: "3px solid var(--border)",
+              borderTopColor: "var(--accent)",
+              borderRadius: "50%",
+              animation: "spin 0.7s linear infinite",
+              margin: "0 auto"
+            }} />
+          </div>
+        ) : communityMessages.length === 0 ? (
+          <p className="text-muted" style={{ padding: "16px" }}>
+            No active announcements at this time.
+          </p>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            {communityMessages.map((msg) => {
+              const createdAt = new Date(msg.createdAt);
+              const expiresAt = new Date(msg.expiresAt);
+              
+              return (
+                <div
+                  key={msg.id}
+                  style={{
+                    padding: "16px",
+                    background: "linear-gradient(135deg, rgba(0,229,160,0.08) 0%, rgba(102,126,234,0.08) 100%)",
+                    border: "1px solid rgba(0,229,160,0.2)",
+                    borderRadius: "10px",
+                    borderLeft: "4px solid var(--accent)"
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "8px" }}>
+                    <h3 style={{ margin: "0 0 4px 0", color: "var(--text-primary)" }}>
+                      {msg.title}
+                    </h3>
+                    <span style={{
+                      fontSize: "0.75rem",
+                      color: "var(--text-muted)",
+                      whiteSpace: "nowrap",
+                      marginLeft: "12px"
+                    }}>
+                      Posted: {createdAt.toLocaleDateString()} {createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                  <p style={{ margin: "0 0 8px 0", color: "var(--text-secondary)", lineHeight: "1.6" }}>
+                    {msg.content}
+                  </p>
+                  <div style={{
+                    fontSize: "0.75rem",
+                    color: "var(--text-muted)",
+                    paddingTop: "8px",
+                    borderTop: "1px solid rgba(0,229,160,0.1)"
+                  }}>
+                    Expires: {expiresAt.toLocaleDateString()} {expiresAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
       {/* ── Reports List ── */}
       <div className="col-span-8 card">
         <h2>Community Reports in {location.city}</h2>
@@ -277,3 +468,7 @@ const Community = () => {
 };
 
 export default Community;
+
+
+
+
