@@ -277,20 +277,44 @@ def test_alert():
 
 @app.route('/api/community/report', methods=['POST'])
 def community_report():
+    from services.reports_management import ReportsManagementService
     from services.alert_service import AQIAlertService
-    svc = AQIAlertService()
+    reports_service = ReportsManagementService()
+    alert_service = AQIAlertService()
     data = request.json or {}
     report_type = data.get('type', 'other')
     description = data.get('description', '')
     city = data.get('city', 'Amravati')
     lat = float(data.get('lat', 20.9343))
     lon = float(data.get('lon', 77.7489))
-    
-    success = svc.send_authority_report(report_type, description, city, lat, lon)
-    if success:
-        return jsonify({"status": "success", "message": "Report submitted and authority notified"})
-    else:
-        return jsonify({"status": "error", "message": "Failed to send authority report"}), 500
+
+    success, result = reports_service.create_report(report_type, description, city, lat, lon)
+    if not success:
+        return jsonify({"status": "error", **result}), 500
+
+    notified = alert_service.send_authority_report(report_type, description, city, lat, lon)
+    message = "Report submitted and authority notified" if notified else "Report submitted, but authority notification failed"
+
+    return jsonify({
+        "status": "success",
+        **result,
+        "message": message,
+        "notified": notified
+    }), 201
+
+
+@app.route('/api/community/reports', methods=['GET'])
+def get_community_reports():
+    """Fetch community reports for the public community page"""
+    try:
+        from services.reports_management import ReportsManagementService
+
+        service = ReportsManagementService()
+        reports = service.get_all_reports(filter_status=request.args.get('status'))
+        return jsonify({"status": "success", "reports": reports}), 200
+    except Exception as e:
+        print(f"Error fetching community reports: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 
 # ─── PDF Download Endpoints ───────────────────────────────────────────────────
@@ -926,6 +950,31 @@ def get_community_messages():
         return jsonify({"status": "success", "messages": messages}), 200
     except Exception as e:
         print(f"Error fetching community messages: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route('/api/community/message', methods=['POST'])
+def create_public_community_message():
+    """Create and publish a community message from the public community page"""
+    try:
+        from services.community_message import CommunityMessageService
+
+        data = request.json or {}
+        title = data.get('title', '')
+        content = data.get('content', '')
+        expires_at = data.get('expiresAt', '')
+
+        if not title or not content or not expires_at:
+            return jsonify({"status": "error", "message": "title, content, and expiresAt are required"}), 400
+
+        service = CommunityMessageService()
+        success, result = service.create_message(title, content, expires_at)
+
+        if success:
+            return jsonify({"status": "success", **result}), 201
+        return jsonify({"status": "error", **result}), 500
+    except Exception as e:
+        print(f"Error creating community message: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
