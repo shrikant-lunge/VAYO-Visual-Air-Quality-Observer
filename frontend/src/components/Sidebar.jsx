@@ -26,7 +26,9 @@ const NAV_ITEMS = [
   { to: "/dashboard/policy", icon: ShieldAlert, label: "Policy", sub: "Simulation" },
   { to: "/dashboard/safe-zones", icon: Heart, label: "Safe Zones", sub: "Clean Areas" },
   { to: "/dashboard/compare", icon: DivideSquare, label: "Compare", sub: "Cities" },
-  { to: "/dashboard/community", icon: Users, label: "Community", sub: "Reports" },
+  { to: "/dashboard/report-hotspot", icon: Users, label: "Report Hotspot", sub: "Your Reports" },
+  { to: "/dashboard/hotspot-map", icon: MapPin, label: "Hotspot Map", sub: "Live" },
+
 ];
 
 const Sidebar = () => {

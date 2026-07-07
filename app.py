@@ -20,13 +20,14 @@ CORS(app,
                  "http://localhost:5000",
                  "http://127.0.0.1:5000",
              ],
-             "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+             "methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
              "allow_headers": ["Content-Type", "Authorization"],
              "supports_credentials": True,
              "max_age": 3600
          }
      }
 )
+
 
 from models.forecasting import AQIForecaster
 from models.routing import RoutePlanner
@@ -1161,7 +1162,234 @@ def delete_admin_report(report_id):
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
+@app.route('/api/hotspot/report', methods=['POST'])
+def hotspot_report():
+    """Accept citizen hotspot photo report with GPS.
+
+    Multipart form-data:
+      - image (file)
+      - lat (number)
+      - lon (number)
+      - city (string)
+      - description (optional string)
+
+    Saves file into static/uploads and stores DB row in database/teamx.db.
+    """
+
+    import sqlite3
+    import uuid
+    from werkzeug.utils import secure_filename
+
+    try:
+        from config import USE_FIREBASE_STORAGE
+    except Exception:
+        USE_FIREBASE_STORAGE = False
+
+    if 'image' not in request.files:
+        return jsonify({'status': 'error', 'message': 'image file is required'}), 400
+
+    image = request.files['image']
+    lat = request.form.get('lat')
+    lon = request.form.get('lon')
+    city = request.form.get('city', 'Unknown')
+    description = request.form.get('description', '')
+
+
+    if lat is None or lon is None:
+        return jsonify({'status': 'error', 'message': 'lat and lon are required'}), 400
+
+    try:
+        lat = float(lat)
+        lon = float(lon)
+    except ValueError:
+        return jsonify({'status': 'error', 'message': 'lat/lon must be numbers'}), 400
+
+    upload_dir = os.path.join(os.path.dirname(__file__), 'static', 'uploads')
+    os.makedirs(upload_dir, exist_ok=True)
+
+    ext = os.path.splitext(secure_filename(image.filename))[1] or '.jpg'
+    filename = f"{uuid.uuid4().hex}{ext}"
+    filepath = os.path.join(upload_dir, filename)
+    image.save(filepath)
+
+    image_path = f"/static/uploads/{filename}"
+
+    # Insert into DB
+    db_path = os.path.join(os.path.dirname(__file__), 'database', 'teamx.db')
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    # Insert into DB (description is optional)
+    cursor.execute('''
+        INSERT INTO hotspot_reports (lat, lon, image_path, city, status, image_label, confidence)
+        VALUES (?, ?, ?, ?, 'pending', 'pending', 0)
+    ''', (lat, lon, image_path, city))
+
+    # Update description separately (table may define it as NOT NULL/with default)
+    if description is not None:
+        cursor.execute(
+            '''UPDATE hotspot_reports SET description = ? WHERE id = ?''',
+            (description, cursor.lastrowid),
+        )
+
+
+    report_id = cursor.lastrowid
+    conn.commit()
+
+    # Classify (best-effort)
+    try:
+        from models.image_classifier import SmokeDustClassifier
+        classifier = SmokeDustClassifier()
+        result = classifier.classify(filepath)
+        label = result.get('label', 'pending')
+        confidence = result.get('confidence', 0.0)
+        cursor.execute('''
+            UPDATE hotspot_reports
+            SET image_label = ?, confidence = ?
+            WHERE id = ?
+        ''', (label, confidence, report_id))
+        conn.commit()
+    except Exception:
+        # Keep pending
+        pass
+
+    conn.close()
+
+    # Fetch final row for response (to include confidence/label)
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT image_label, confidence
+        FROM hotspot_reports
+        WHERE id = ?
+    ''', (report_id,))
+    row = cursor.fetchone()
+    conn.close()
+
+    image_label = row[0] if row else 'pending'
+    confidence = row[1] if row and row[1] is not None else 0.0
+
+    return jsonify({
+        'status': 'success',
+        'report_id': report_id,
+        'image_label': image_label,
+        'confidence': confidence,
+        'image_path': image_path,
+    }), 201
+
+
+@app.route('/api/hotspot/report/<int:report_id>/status', methods=['PATCH'])
+def hotspot_update_status(report_id):
+    """Update hotspot report status."""
+    import sqlite3
+
+    data = request.json or {}
+    new_status = data.get('status', '')
+    valid_statuses = ['pending', 'confirmed', 'dispatched', 'resolved']
+
+    if new_status not in valid_statuses:
+        return jsonify({
+            'status': 'error',
+            'message': f"Invalid status. Must be one of: {valid_statuses}"
+        }), 400
+
+    db_path = os.path.join(os.path.dirname(__file__), 'database', 'teamx.db')
+
+    # Ensure row exists (and also allow soft delete by resolving)
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        cursor.execute('SELECT id FROM hotspot_reports WHERE id = ?', (report_id,))
+        exists = cursor.fetchone() is not None
+
+        if not exists:
+            conn.close()
+            return jsonify({'status': 'error', 'message': 'Report not found'}), 404
+
+        cursor.execute('UPDATE hotspot_reports SET status = ? WHERE id = ?', (new_status, report_id))
+        conn.commit()
+        conn.close()
+        return jsonify({'status': 'success', 'message': f"Report {report_id} updated to '{new_status}'"}), 200
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+
+@app.route('/api/hotspot/reports', methods=['GET'])
+def hotspot_reports_list():
+
+    """List active (non-resolved) hotspot reports for a given city.
+
+    Query params:
+      - city (optional)
+
+    Returns hotspot_reports rows enriched with consistent fields expected by the UI.
+    """
+    import sqlite3
+    import datetime
+
+    city = request.args.get('city', None)
+
+    # Default fallback city if none provided
+    if not city:
+        city = 'Amravati'
+
+    db_path = os.path.join(os.path.dirname(__file__), 'database', 'teamx.db')
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+
+    # hotspot_reports schema (as used by /api/hotspot/points):
+    # SELECT id, lat, lon, image_path, image_label, confidence, reported_at, city
+    # Ensure we also include status if present.
+    # Some deployments might store a `status` column; handle gracefully.
+    try:
+        cursor.execute('''
+            SELECT id, lat, lon, image_path, image_label, confidence, reported_at, city, status
+            FROM hotspot_reports
+            WHERE city = ?
+              AND (status IS NULL OR status != 'resolved')
+            ORDER BY reported_at DESC
+        ''', (city,))
+    except sqlite3.OperationalError:
+        cursor.execute('''
+            SELECT id, lat, lon, image_path, image_label, confidence, reported_at, city, NULL as status
+            FROM hotspot_reports
+            WHERE city = ?
+            ORDER BY reported_at DESC
+        ''', (city,))
+
+    rows = cursor.fetchall()
+    conn.close()
+
+    reports = []
+    for row in rows:
+        # Coerce confidence into float if possible
+        conf = row['confidence']
+        try:
+            conf = float(conf) if conf is not None else None
+        except Exception:
+            conf = conf
+
+        rep = {
+            'id': row['id'],
+            'lat': row['lat'],
+            'lon': row['lon'],
+            'image_path': row['image_path'],
+            'image_label': row['image_label'],
+            'confidence': conf,
+            'reported_at': row['reported_at'],
+            'city': row['city'],
+            'status': row['status'] or 'pending',
+            # Backward-compatible aliases that the frontend might use
+            'timestamp': row['reported_at'],
+        }
+        reports.append(rep)
+
+    # If none exist, return empty list
+    return jsonify({'status': 'success', 'reports': reports}), 200
+
 if __name__ == '__main__':
     from config import PORT, HOST, DEBUG
     print(f"Starting Team-X project on http://{HOST}:{PORT}")
     app.run(debug=DEBUG, host=HOST, port=PORT)
+

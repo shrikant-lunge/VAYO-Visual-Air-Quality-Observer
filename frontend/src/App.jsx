@@ -14,7 +14,9 @@ import Routing from './pages/Routing';
 import Policy from './pages/Policy';
 import SafeZones from './pages/SafeZones';
 import Compare from './pages/Compare';
-import Community from './pages/Community';
+import HotspotMap from './pages/HotspotMap';
+import ReportHotspot from './pages/ReportHotspot';
+
 import AdminLogin from './pages/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminProtectedRoute from './components/AdminProtectedRoute';
@@ -47,7 +49,9 @@ function App() {
             <Route path="policy" element={<Policy />} />
             <Route path="safe-zones" element={<SafeZones />} />
             <Route path="compare" element={<Compare />} />
-            <Route path="community" element={<Community />} />
+            <Route path="hotspot-map" element={<HotspotMap />} />
+            <Route path="report-hotspot" element={<ReportHotspot />} />
+
           </Route>
 
           {/* Catch all - redirect to login */}
