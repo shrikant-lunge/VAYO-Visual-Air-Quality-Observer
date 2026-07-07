@@ -280,11 +280,27 @@ const ReportHotspot = () => {
             </div>
           </div>
 
+          {typeof r.description === "string" && r.description.trim() ? (
+            <p
+              style={{
+                margin: 0,
+                color: "var(--text-secondary)",
+                fontSize: "0.9rem",
+                lineHeight: 1.5,
+              }}
+              title={r.description}
+            >
+              <span style={{ fontWeight: 700 }}>Description:</span> {r.description}
+            </p>
+          ) : null}
+
+
           {reportedAt ? (
             <div style={{ color: "var(--text-muted)", fontSize: "12px" }}>
               <span style={{ fontWeight: 700 }}>Reported:</span> {new Date(reportedAt).toLocaleString()}
             </div>
           ) : null}
+
 
           <div
             style={{

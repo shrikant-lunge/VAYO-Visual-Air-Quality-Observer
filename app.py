@@ -1380,10 +1380,15 @@ def hotspot_reports_list():
             'reported_at': row['reported_at'],
             'city': row['city'],
             'status': row['status'] or 'pending',
+            # Description is stored on submit; may or may not exist in schema on some DBs
+            'description': row['description'] if 'description' in row.keys() else '',
             # Backward-compatible aliases that the frontend might use
             'timestamp': row['reported_at'],
         }
+
+
         reports.append(rep)
+
 
     # If none exist, return empty list
     return jsonify({'status': 'success', 'reports': reports}), 200
