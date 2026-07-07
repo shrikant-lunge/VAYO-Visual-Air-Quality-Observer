@@ -15,11 +15,56 @@ import "leaflet/dist/leaflet.css";
 import { API_BASE_URL } from "../apiConfig";
 import { useLocation } from "../hooks/useLocation";
 
+const aqiColor = (aqi) => {
+  const n = Number(aqi);
+  if (!Number.isFinite(n)) return "#00e5a0";
+  if (n <= 50) return "#00e5a0"; // Good
+  if (n <= 100) return "#f5c542"; // Moderate
+  if (n <= 150) return "#ff8c42"; // Sensitive
+  if (n <= 200) return "#ff4f6b"; // Unhealthy
+  if (n <= 300) return "#9b59b6"; // Very Unhealthy
+  return "#7b241c"; // Hazardous
+};
+
 const severityColor = (severity) => {
   if (severity === "severe") return "#ef4444";
   if (severity === "moderate") return "#f97316";
   return "#22c55e";
 };
+
+// Same pin logic used in Dashboard/MapWidget: colored circle with AQI text
+const createAqiIcon = (aqi) => {
+  const n = Number(aqi);
+  const safeAqi = Number.isFinite(n) ? n : 0;
+
+  const size = safeAqi > 200 ? 38 : safeAqi > 150 ? 32 : safeAqi > 100 ? 26 : 22;
+  const bg = aqiColor(safeAqi);
+
+  return L.divIcon({
+    className: "", // keep inline colors
+    html: `<div style="
+      background: ${bg};
+      color: #ffffff;
+      width: ${size}px;
+      height: ${size}px;
+      border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.85);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'DM Mono', monospace;
+      font-size: ${size > 30 ? 11 : 9}px;
+      font-weight: 600;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.45);
+      box-sizing: border-box;
+      cursor: pointer;
+      transition: transform 0.2s;
+    ">${safeAqi}</div>`,
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+  });
+};
+
 
 const photoIcon = (severity) =>
   L.divIcon({
@@ -90,9 +135,10 @@ const HotspotMap = () => {
     setLoading(true);
     setError("");
     try {
-      const res = await axios.get(`${API_BASE_URL || ""}/api/hotspot/points`, {
+      const res = await axios.get(`${API_BASE_URL || ""}/api/map/pins`, {
         params: { city: location.city || "Amravati", lat: center[0], lon: center[1] },
       });
+
       setPoints(res.data.points || []);
     } catch (err) {
       setError(err.response?.data?.message || "Could not load pollution points.");
@@ -162,16 +208,20 @@ const HotspotMap = () => {
           </div>
         )}
 
-        <div style={{ position: "absolute", left: 12, bottom: 12, zIndex: 1000, width: 220, padding: 12, borderRadius: 8, background: "var(--bg-card)", border: "1px solid var(--border-subtle)", display: "grid", gap: 8, fontSize: "0.82rem" }}>
-          <strong>Legend</strong>
-          <LegendItem color="#22c55e" label="Low severity" />
-          <LegendItem color="#f97316" label="Moderate severity" />
-          <LegendItem color="#ef4444" label="Severe hotspot" />
+        <div style={{ position: "absolute", left: 12, bottom: 12, zIndex: 1000, width: 240, padding: 12, borderRadius: 8, background: "var(--bg-card)", border: "1px solid var(--border-subtle)", display: "grid", gap: 8, fontSize: "0.82rem" }}>
+          <strong>AQI Legend</strong>
+          <LegendItem color="#00e5a0" label="Good (≤50)" />
+          <LegendItem color="#f5c542" label="Moderate (≤100)" />
+          <LegendItem color="#ff8c42" label="Sensitive (≤150)" />
+          <LegendItem color="#ff4f6b" label="Unhealthy (≤200)" />
+          <LegendItem color="#9b59b6" label="Very Unhealthy (≤300)" />
+          <LegendItem color="#7b241c" label="Hazardous" />
           <div style={{ borderTop: "1px solid var(--border-subtle)", paddingTop: 8 }}>
-            <div>Camera pin: citizen photo</div>
+            <div>Camera pin: citizen report</div>
             <div>Circle: AQI sensor point</div>
           </div>
         </div>
+
 
         <MapContainer center={center} zoom={12} style={{ width: "100%", height: "100%" }}>
           <MapResizer />
@@ -183,7 +233,18 @@ const HotspotMap = () => {
             const severity = p.severity;
             const label = p.label || p.name || "Hotspot";
 
+            const aqi = p.aqi;
             const radius = (() => {
+              // Prefer AQI-based sizing (same idea as MapWidget heat intensity).
+              const n = Number(aqi);
+              if (Number.isFinite(n)) {
+                if (n > 200) return 1400;
+                if (n > 150) return 1050;
+                if (n > 100) return 800;
+                return 650;
+              }
+
+              // Fallback to existing severity-based sizing.
               const sev = String(severity || "low").toLowerCase();
               if (sev === "hazardous" || sev === "severe") return 1400;
               if (sev === "high") return 1050;
@@ -191,12 +252,21 @@ const HotspotMap = () => {
               return 650;
             })();
 
+
+            const aqiSafe = Number.isFinite(Number(aqi)) ? Number(aqi) : null;
+            const displayAqi = aqiSafe ?? (severity ? 120 : null); // fallback so pins still show
+
             return (
               <React.Fragment key={`${p.id || index}-${lat}-${lon}`}>
                 <CircleMarker
                   center={[lat, lon]}
                   radius={radius}
-                  pathOptions={{ color: severityColor(severity), fillColor: severityColor(severity), fillOpacity: 0.1, weight: 2 }}
+                  pathOptions={{
+                    color: aqiColor(displayAqi),
+                    fillColor: aqiColor(displayAqi),
+                    fillOpacity: 0.1,
+                    weight: 2,
+                  }}
                 />
 
                 {p.type === "photo" ? (
@@ -204,13 +274,9 @@ const HotspotMap = () => {
                     <Popup>{renderPopup(p, label)}</Popup>
                   </Marker>
                 ) : (
-                  <CircleMarker
-                    center={[lat, lon]}
-                    radius={9}
-                    pathOptions={{ color: "#ffffff", fillColor: severityColor(severity), fillOpacity: 0.82, weight: 2 }}
-                  >
+                  <Marker position={[lat, lon]} icon={createAqiIcon(displayAqi)}>
                     <Popup>{renderPopup(p, p.name || "AQI Sensor")}</Popup>
-                  </CircleMarker>
+                  </Marker>
                 )}
               </React.Fragment>
             );

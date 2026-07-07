@@ -1,12 +1,9 @@
 # TODO
 
-## Report Hotspot updates
-- [x] Add backend endpoint `GET /api/hotspot/reports?city=...` to list active hotspot reports.
-- [x] Update `frontend/src/pages/ReportHotspot.jsx` to display all uploaded hotspot reports with image + location + label/confidence and a Delete button.
-- [ ] Fix issue: submitting new hotspot report returns 404.
-- [ ] Fix issue: report image not loading in UI.
+- [x] Update HotspotMap to render AQI-based hotspot pins using the same logic as Dashboard/MapWidget (aqiColor + createAqiIcon, AQI text in pins).
+- [x] Keep existing photo/report popup rendering.
+- [x] Update legend to reflect AQI categories (Good/Moderate/Sensitive/Unhealthy/etc) instead of severity labels.
+- [x] Quick sanity check: ensure build compiles and pins render when `p.aqi` is present.
 
-## Debug checklist
-- [ ] Confirm backend has `POST /api/hotspot/report` and `PATCH /api/hotspot/report/<id>/status` routes.
-- [ ] Confirm frontend uses correct backend base URL for images and API.
+
 
